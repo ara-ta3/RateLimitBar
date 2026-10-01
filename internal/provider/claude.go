@@ -24,14 +24,34 @@ type claude struct {
 	now        func() time.Time
 }
 
+type claudeUtilization struct {
+	FiveHour *claudeWindow `json:"five_hour"`
+	SevenDay *claudeWindow `json:"seven_day"`
+}
+
 type claudeConfig struct {
 	CachedUsageUtilization *struct {
-		FetchedAtMs *int64 `json:"fetchedAtMs"`
-		Utilization *struct {
-			FiveHour *claudeWindow `json:"five_hour"`
-			SevenDay *claudeWindow `json:"seven_day"`
-		} `json:"utilization"`
+		FetchedAtMs *int64             `json:"fetchedAtMs"`
+		Utilization *claudeUtilization `json:"utilization"`
 	} `json:"cachedUsageUtilization"`
+}
+
+// claudeWindows は、Claude が持つ Window の正本。並びは表示順になる。
+var claudeWindows = []struct {
+	label string
+	key   string
+	pick  func(*claudeUtilization) *claudeWindow
+}{
+	{WindowFiveHour, "five_hour", func(u *claudeUtilization) *claudeWindow { return u.FiveHour }},
+	{WindowWeekly, "seven_day", func(u *claudeUtilization) *claudeWindow { return u.SevenDay }},
+}
+
+func claudeWindowLabels() []string {
+	labels := make([]string, len(claudeWindows))
+	for i, spec := range claudeWindows {
+		labels[i] = spec.label
+	}
+	return labels
 }
 
 type claudeWindow struct {
@@ -76,17 +96,17 @@ func (c claude) Fetch(context.Context) (usage.Usage, error) {
 	if cache.Utilization == nil {
 		return usage.Usage{}, errors.New("cachedUsageUtilization.utilization not found")
 	}
-	fiveHour, err := claudeWindowUsage("5h", "five_hour", cache.Utilization.FiveHour)
-	if err != nil {
-		return usage.Usage{}, err
-	}
-	weekly, err := claudeWindowUsage("Weekly", "seven_day", cache.Utilization.SevenDay)
-	if err != nil {
-		return usage.Usage{}, err
+	windows := make([]usage.Window, 0, len(claudeWindows))
+	for _, spec := range claudeWindows {
+		w, err := claudeWindowUsage(spec.label, spec.key, spec.pick(cache.Utilization))
+		if err != nil {
+			return usage.Usage{}, err
+		}
+		windows = append(windows, w)
 	}
 	age := c.now().Sub(time.UnixMilli(*cache.FetchedAtMs))
 	return usage.Usage{
-		Windows: []usage.Window{fiveHour, weekly},
+		Windows: windows,
 		Stale:   age > c.staleAfter,
 	}, nil
 }

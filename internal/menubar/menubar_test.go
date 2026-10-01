@@ -51,7 +51,7 @@ func TestApplyRefreshFailedProviderDoesNotAffectOthers(t *testing.T) {
 		}, fetchErr
 	}
 
-	err := menubar.ApplyRefresh(context.Background(), fetch, setters(items))
+	err := menubar.ApplyRefresh(context.Background(), fetch, setters(items), freshTitleState())
 
 	if !errors.Is(err, fetchErr) {
 		t.Errorf("ApplyRefresh() error = %v, want %v", err, fetchErr)
@@ -70,6 +70,7 @@ func TestApplyRefreshFailedProviderDoesNotAffectOthers(t *testing.T) {
 func TestApplyRefreshUpdatesSameItemsAcrossRefreshes(t *testing.T) {
 	item := &fakeItem{}
 	items := []menubar.TitleSetter{item}
+	state := freshTitleState()
 	var failing = true
 	fetch := func(context.Context) ([]usage.Result, error) {
 		if failing {
@@ -79,13 +80,13 @@ func TestApplyRefreshUpdatesSameItemsAcrossRefreshes(t *testing.T) {
 		return []usage.Result{success("Codex", usage.Window{Label: "5h", UsedPercent: 61})}, nil
 	}
 
-	_ = menubar.ApplyRefresh(context.Background(), fetch, items)
+	_ = menubar.ApplyRefresh(context.Background(), fetch, items, state)
 	if !strings.Contains(item.title, "Failed to fetch") {
 		t.Fatalf("before recovery: %q", item.title)
 	}
 
 	failing = false
-	if err := menubar.ApplyRefresh(context.Background(), fetch, items); err != nil {
+	if err := menubar.ApplyRefresh(context.Background(), fetch, items, state); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(item.title, "Failed to fetch") || !strings.Contains(item.title, "61%") {
@@ -110,7 +111,7 @@ func TestApplyRefreshRejectsResultCountMismatchWithoutUpdating(t *testing.T) {
 		}, nil
 	}
 
-	err := menubar.ApplyRefresh(context.Background(), fetch, []menubar.TitleSetter{item})
+	err := menubar.ApplyRefresh(context.Background(), fetch, []menubar.TitleSetter{item}, freshTitleState())
 
 	if !errors.Is(err, menubar.ErrResultCountMismatch) {
 		t.Errorf("ApplyRefresh() error = %v, want ErrResultCountMismatch", err)
@@ -141,4 +142,8 @@ func TestFormatResultDoesNotMarkFreshUsageAsStale(t *testing.T) {
 	if strings.Contains(got, "stale") {
 		t.Errorf("FormatResult() = %q, must not contain stale", got)
 	}
+}
+
+func freshTitleState() *menubar.TitleState {
+	return menubar.NewTitleState(&fakeItem{}, menubar.NewSelection(testSources()))
 }

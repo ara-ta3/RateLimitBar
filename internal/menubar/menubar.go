@@ -15,18 +15,27 @@ const loadingTitle = "Loading..."
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(providerNames []string, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
+func Run(sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	fatal := make(chan error, 1)
 	systray.Run(func() {
-		systray.SetTitle("RateLimit")
-		setters := make([]TitleSetter, len(providerNames))
-		for i, name := range providerNames {
-			item := systray.AddMenuItem(name+": "+loadingTitle, "")
+		sel := NewSelection(sources)
+		title := NewTitleState(systrayTitle{}, sel)
+		title.Redraw()
+		setters := make([]TitleSetter, len(sources))
+		for i, src := range sources {
+			item := systray.AddMenuItem(src.Name+": "+loadingTitle, "")
 			item.Disable()
 			setters[i] = item
+		}
+		systray.AddSeparator()
+		for _, src := range sources {
+			for _, label := range src.Windows {
+				item := systray.AddMenuItemCheckbox(src.Name+" "+label, "", true)
+				go toggleOnClick(ctx, item, sel, src.Name, label, title)
+			}
 		}
 		systray.AddSeparator()
 		refresh := systray.AddMenuItem("Refresh", "")
@@ -34,7 +43,7 @@ func Run(providerNames []string, refreshInterval time.Duration, fetch Fetch, onF
 
 		triggers := make(chan struct{}, 1)
 		triggers <- struct{}{}
-		go refreshWorker(ctx, triggers, fetch, setters, onFetchError, fatal)
+		go refreshWorker(ctx, triggers, fetch, setters, title, onFetchError, fatal)
 		go dispatchEvents(ctx, refresh.ClickedCh, quit.ClickedCh, triggers)
 		go periodicTrigger(ctx, refreshInterval, triggers)
 	}, func() {})
@@ -47,14 +56,35 @@ func Run(providerNames []string, refreshInterval time.Duration, fetch Fetch, onF
 	}
 }
 
-func refreshWorker(ctx context.Context, triggers <-chan struct{}, fetch Fetch, items []TitleSetter, onFetchError func(error), fatal chan<- error) {
+type systrayTitle struct{}
+
+func (systrayTitle) SetTitle(title string) { systray.SetTitle(title) }
+
+// toggleOnClick は項目のクリックごとに選択を切り替え、チェック表示とタイトルを追従させる。
+func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, provider, label string, title *TitleState) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-item.ClickedCh:
+			if sel.Toggle(provider, label) {
+				item.Check()
+			} else {
+				item.Uncheck()
+			}
+			title.Redraw()
+		}
+	}
+}
+
+func refreshWorker(ctx context.Context, triggers <-chan struct{}, fetch Fetch, items []TitleSetter, title *TitleState, onFetchError func(error), fatal chan<- error) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-triggers:
 		}
-		err := ApplyRefresh(ctx, fetch, items)
+		err := ApplyRefresh(ctx, fetch, items, title)
 		if errors.Is(err, ErrResultCountMismatch) {
 			fatal <- err
 			systray.Quit()

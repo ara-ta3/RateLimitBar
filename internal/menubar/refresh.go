@@ -18,9 +18,9 @@ type TitleSetter interface {
 // ErrResultCountMismatch は Result 数と項目数が合わず、表示を更新できないことを表す。
 var ErrResultCountMismatch = errors.New("menubar: result count does not match menu item count")
 
-// ApplyRefresh は fetch の結果を既存の項目へ反映する。
+// ApplyRefresh は fetch の結果を既存の項目とタイトルへ反映する。
 // 取得 error は表示の反映後にそのまま返す。Result 数と項目数が合わない場合は反映せず ErrResultCountMismatch を返す。
-func ApplyRefresh(ctx context.Context, fetch Fetch, items []TitleSetter) error {
+func ApplyRefresh(ctx context.Context, fetch Fetch, items []TitleSetter, title *TitleState) error {
 	results, fetchErr := fetch(ctx)
 	if len(results) != len(items) {
 		return fmt.Errorf("%w: %d results, %d items", ErrResultCountMismatch, len(results), len(items))
@@ -28,5 +28,6 @@ func ApplyRefresh(ctx context.Context, fetch Fetch, items []TitleSetter) error {
 	for i, r := range results {
 		items[i].SetTitle(FormatResult(r))
 	}
+	title.update(results)
 	return fetchErr
 }

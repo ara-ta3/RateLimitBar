@@ -22,19 +22,17 @@ func main() {
 }
 
 func run() error {
-	providers := []provider.Provider{
-		provider.NewClaude(),
-		provider.NewMockCodex(),
-		provider.NewMockCursor(),
-	}
-	names := make([]string, len(providers))
-	for i, p := range providers {
-		names[i] = p.Name()
+	registrations := provider.DefaultRegistrations()
+	providers := make([]provider.Provider, len(registrations))
+	sources := make([]menubar.Source, len(registrations))
+	for i, r := range registrations {
+		providers[i] = r.Provider
+		sources[i] = menubar.Source{Name: r.Provider.Name(), Windows: r.Windows}
 	}
 	fetch := func(ctx context.Context) ([]usage.Result, error) {
 		return provider.FetchAll(ctx, providers)
 	}
-	return menubar.Run(names, refreshInterval, fetch, func(err error) {
+	return menubar.Run(sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
 	})
 }
