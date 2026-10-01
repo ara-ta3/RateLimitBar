@@ -3,6 +3,7 @@ package menubar
 import (
 	"context"
 	"errors"
+	"time"
 
 	"fyne.io/systray"
 )
@@ -10,10 +11,11 @@ import (
 const loadingTitle = "Loading..."
 
 // Run はメニューバーに常駐し、Quit が選ばれるまでブロックする。
+// refreshInterval ごとに自動で再取得する。
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(providerNames []string, fetch Fetch, onFetchError func(error)) error {
+func Run(providerNames []string, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -34,6 +36,7 @@ func Run(providerNames []string, fetch Fetch, onFetchError func(error)) error {
 		triggers <- struct{}{}
 		go refreshWorker(ctx, triggers, fetch, setters, onFetchError, fatal)
 		go dispatchEvents(ctx, refresh.ClickedCh, quit.ClickedCh, triggers)
+		go periodicTrigger(ctx, refreshInterval, triggers)
 	}, func() {})
 
 	select {
@@ -75,6 +78,23 @@ func dispatchEvents(ctx context.Context, refreshClicked, quitClicked <-chan stru
 			select {
 			case triggers <- struct{}{}:
 			default: // 取得中に再度押された分は、待機中の1件にまとめる
+			}
+		}
+	}
+}
+
+// periodicTrigger は interval ごとに triggers へ送る。取得は refreshWorker だけが行うため、手動更新と並行しない。
+func periodicTrigger(ctx context.Context, interval time.Duration, triggers chan<- struct{}) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			select {
+			case triggers <- struct{}{}:
+			default: // 取得待ちが既にある場合は、その1件にまとめる
 			}
 		}
 	}

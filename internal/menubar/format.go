@@ -7,7 +7,10 @@ import (
 	"ratelimitbar/internal/usage"
 )
 
-const failedToFetch = "Failed to fetch"
+const (
+	failedToFetch = "Failed to fetch"
+	staleSuffix   = " (stale)"
+)
 
 // FormatResult はメニュー1行分の表示文字列を作る。
 func FormatResult(r usage.Result) string {
@@ -18,5 +21,9 @@ func FormatResult(r usage.Result) string {
 	for i, w := range r.Usage.Windows {
 		windows[i] = fmt.Sprintf("%s %d%%", w.Label, w.UsedPercent)
 	}
-	return fmt.Sprintf("%s: %s", r.Provider, strings.Join(windows, " / "))
+	text := fmt.Sprintf("%s: %s", r.Provider, strings.Join(windows, " / "))
+	if r.Usage.Stale {
+		text += staleSuffix
+	}
+	return text
 }

@@ -15,10 +15,6 @@ func (m mock) Name() string { return m.name }
 
 func (m mock) Fetch(context.Context) (usage.Usage, error) { return m.usage, nil }
 
-func NewMockClaude() Provider {
-	return mock{"Claude", usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 23}, {Label: "Weekly", UsedPercent: 48}}}}
-}
-
 func NewMockCodex() Provider {
 	return mock{"Codex", usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 61}, {Label: "Weekly", UsedPercent: 37}}}}
 }

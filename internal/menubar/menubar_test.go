@@ -119,3 +119,26 @@ func TestApplyRefreshRejectsResultCountMismatchWithoutUpdating(t *testing.T) {
 		t.Errorf("item title = %q, must not be updated", item.title)
 	}
 }
+
+func TestFormatResultMarksStaleUsageAndKeepsValues(t *testing.T) {
+	r := success("Claude",
+		usage.Window{Label: "5h", UsedPercent: 23},
+		usage.Window{Label: "Weekly", UsedPercent: 48},
+	)
+	r.Usage.Stale = true
+
+	got := menubar.FormatResult(r)
+
+	for _, want := range []string{"5h", "23%", "Weekly", "48%", "(stale)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("FormatResult() = %q, want it to contain %q", got, want)
+		}
+	}
+}
+
+func TestFormatResultDoesNotMarkFreshUsageAsStale(t *testing.T) {
+	got := menubar.FormatResult(success("Claude", usage.Window{Label: "5h", UsedPercent: 23}))
+	if strings.Contains(got, "stale") {
+		t.Errorf("FormatResult() = %q, must not contain stale", got)
+	}
+}
