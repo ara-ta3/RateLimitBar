@@ -10,13 +10,13 @@ import (
 
 const loadingTitle = "Loading..."
 
-// Run はメニューバーに常駐し、Quit が選ばれるまでブロックする。
+// Run はメニューバーに常駐し、Quit が選ばれるか ctx がキャンセルされるまでブロックする。
 // refreshInterval ごとに自動で再取得する。
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	fatal := make(chan error, 1)
@@ -46,7 +46,7 @@ func Run(sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchEr
 		go refreshWorker(ctx, triggers, fetch, setters, title, onFetchError, fatal)
 		go dispatchEvents(ctx, refresh.ClickedCh, quit.ClickedCh, triggers)
 		go periodicTrigger(ctx, refreshInterval, triggers)
-	}, func() {})
+	}, cancel)
 
 	select {
 	case err := <-fatal:
@@ -97,12 +97,12 @@ func refreshWorker(ctx context.Context, triggers <-chan struct{}, fetch Fetch, i
 }
 
 func dispatchEvents(ctx context.Context, refreshClicked, quitClicked <-chan struct{}, triggers chan<- struct{}) {
+	defer systray.Quit()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-quitClicked:
-			systray.Quit()
 			return
 		case <-refreshClicked:
 			select {
