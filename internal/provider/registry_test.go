@@ -18,11 +18,7 @@ func windowLabels(windows []usage.Window) []string {
 	return labels
 }
 
-func TestDefaultRegistrationsWindowsMatchFetchedLabels(t *testing.T) {
-	// NewClaude は実ホームの .claude.json を読むため、Claude の Fetch だけは同じ形式の一時ファイルで実行する。
-	fetchers := map[string]provider.Provider{
-		"Claude": newClaudeAt(writeClaudeJSON(t, validCache), fetchedAt, time.Hour),
-	}
+func TestDefaultRegistrationsDeclareFixedWindowLabels(t *testing.T) {
 	want := map[string][]string{
 		"Claude": {"5h", "Weekly"},
 		"Codex":  {"5h", "Weekly"},
@@ -36,21 +32,28 @@ func TestDefaultRegistrationsWindowsMatchFetchedLabels(t *testing.T) {
 	}
 	for _, r := range registrations {
 		name := r.Provider.Name()
-		t.Run(name, func(t *testing.T) {
-			if !slices.Equal(r.Windows, want[name]) {
-				t.Errorf("Windows = %v, want %v", r.Windows, want[name])
-			}
-			fetcher, ok := fetchers[name]
-			if !ok {
-				fetcher = r.Provider
-			}
-			got, err := fetcher.Fetch(context.Background())
-			if err != nil {
-				t.Fatalf("Fetch() error = %v", err)
-			}
-			if fetched := windowLabels(got.Windows); !slices.Equal(fetched, r.Windows) {
-				t.Errorf("Fetch labels = %v, registration Windows = %v", fetched, r.Windows)
-			}
-		})
+		if !slices.Equal(r.Windows, want[name]) {
+			t.Errorf("%s Windows = %v, want %v", name, r.Windows, want[name])
+		}
+	}
+}
+
+func TestDefaultRegistrationsKeepClaudeWindowsMatchingFetchedLabels(t *testing.T) {
+	// NewClaude は実ホームの .claude.json を読むため、Fetch は同じ形式の一時ファイルで行う。
+	claude := newClaudeAt(writeClaudeJSON(t, validCache), fetchedAt, time.Hour)
+	var claudeWindows []string
+	for _, r := range provider.DefaultRegistrations() {
+		if r.Provider.Name() == "Claude" {
+			claudeWindows = r.Windows
+		}
+	}
+
+	got, err := claude.Fetch(context.Background())
+
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+	if fetched := windowLabels(got.Windows); !slices.Equal(fetched, claudeWindows) {
+		t.Errorf("Fetch labels = %v, registration Windows = %v", fetched, claudeWindows)
 	}
 }

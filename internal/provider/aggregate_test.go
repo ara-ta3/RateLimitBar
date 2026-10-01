@@ -78,7 +78,7 @@ func TestFetchAllJoinsEveryProviderError(t *testing.T) {
 
 func TestFetchAllReturnsNoErrorWhenAllSucceed(t *testing.T) {
 	results, err := provider.FetchAll(context.Background(), []provider.Provider{
-		provider.NewMockCodex(), provider.NewMockCursor(),
+		fakeProvider{"Codex", fixedUsage("5h", 61)}, fakeProvider{"Cursor", fixedUsage("Monthly", 18)},
 	})
 	if err != nil {
 		t.Fatalf("error = %v, want nil", err)
