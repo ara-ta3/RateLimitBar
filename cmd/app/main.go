@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"ratelimitbar/internal/menubar"
@@ -22,6 +24,9 @@ func main() {
 }
 
 func run() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	registrations := provider.DefaultRegistrations()
 	providers := make([]provider.Provider, len(registrations))
 	sources := make([]menubar.Source, len(registrations))
@@ -32,7 +37,7 @@ func run() error {
 	fetch := func(ctx context.Context) ([]usage.Result, error) {
 		return provider.FetchAll(ctx, providers)
 	}
-	return menubar.Run(sources, refreshInterval, fetch, func(err error) {
+	return menubar.Run(ctx, sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
 	})
 }
