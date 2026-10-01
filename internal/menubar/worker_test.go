@@ -90,7 +90,7 @@ func TestRefreshWorkerRecoversOnPeriodicTriggerAfterFetchFailure(t *testing.T) {
 	triggers := make(chan struct{}, 1)
 	triggers <- struct{}{}
 	fatal := make(chan error, 1)
-	go refreshWorker(ctx, triggers, fetch, []TitleSetter{item}, func(err error) { fetchErrs <- err }, fatal)
+	go refreshWorker(ctx, triggers, fetch, []TitleSetter{item}, freshTitleState(), func(err error) { fetchErrs <- err }, fatal)
 	go periodicTrigger(ctx, 5*time.Millisecond, triggers)
 
 	deadline := time.After(2 * time.Second)
@@ -132,7 +132,7 @@ func TestRefreshWorkerNeverRunsFetchConcurrentlyWithPeriodicAndManualTriggers(t 
 	}
 	triggers := make(chan struct{}, 1)
 	fatal := make(chan error, 1)
-	go refreshWorker(ctx, triggers, fetch, []TitleSetter{&titleRecorder{}}, func(error) {}, fatal)
+	go refreshWorker(ctx, triggers, fetch, []TitleSetter{&titleRecorder{}}, freshTitleState(), func(error) {}, fatal)
 	go periodicTrigger(ctx, time.Millisecond, triggers)
 	go func() { // 手動更新相当
 		for ctx.Err() == nil {
@@ -155,4 +155,8 @@ func TestRefreshWorkerNeverRunsFetchConcurrentlyWithPeriodicAndManualTriggers(t 
 	if got := maxRunning.Load(); got != 1 {
 		t.Errorf("max concurrent fetches = %d, want 1", got)
 	}
+}
+
+func freshTitleState() *TitleState {
+	return NewTitleState(&titleRecorder{}, NewSelection([]Source{{Name: "Claude", Windows: []string{"5h"}}}))
 }
