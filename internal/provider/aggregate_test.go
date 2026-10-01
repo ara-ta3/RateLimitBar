@@ -78,13 +78,13 @@ func TestFetchAllJoinsEveryProviderError(t *testing.T) {
 
 func TestFetchAllReturnsNoErrorWhenAllSucceed(t *testing.T) {
 	results, err := provider.FetchAll(context.Background(), []provider.Provider{
-		provider.NewMockClaude(), provider.NewMockCodex(), provider.NewMockCursor(),
+		provider.NewMockCodex(), provider.NewMockCursor(),
 	})
 	if err != nil {
 		t.Fatalf("error = %v, want nil", err)
 	}
-	if len(results) != 3 {
-		t.Fatalf("len(results) = %d, want 3", len(results))
+	if len(results) != 2 {
+		t.Fatalf("len(results) = %d, want 2", len(results))
 	}
 }
 

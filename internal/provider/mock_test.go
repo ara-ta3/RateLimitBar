@@ -15,7 +15,6 @@ func TestMockProvidersReturnSpecifiedUsage(t *testing.T) {
 		wantName string
 		want     []usage.Window
 	}{
-		{"claude", provider.NewMockClaude(), "Claude", []usage.Window{{Label: "5h", UsedPercent: 23}, {Label: "Weekly", UsedPercent: 48}}},
 		{"codex", provider.NewMockCodex(), "Codex", []usage.Window{{Label: "5h", UsedPercent: 61}, {Label: "Weekly", UsedPercent: 37}}},
 		{"cursor", provider.NewMockCursor(), "Cursor", []usage.Window{{Label: "Monthly", UsedPercent: 18}}},
 	}
