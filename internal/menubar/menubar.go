@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"fyne.io/systray"
+
+	"ratelimitbar/internal/usage"
 )
 
 const loadingTitle = "Loading..."
@@ -38,12 +40,18 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			}
 		}
 		systray.AddSeparator()
+		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title})
 		refresh := systray.AddMenuItem("Refresh", "")
 		quit := systray.AddMenuItem("Quit", "")
 
 		triggers := make(chan struct{}, 1)
 		triggers <- struct{}{}
-		go refreshWorker(ctx, triggers, fetch, setters, title, onFetchError, fatal)
+		fetchWithDynamicItems := func(ctx context.Context) ([]usage.Result, error) {
+			results, err := fetch(ctx)
+			dynamicItems.Apply(results)
+			return results, err
+		}
+		go refreshWorker(ctx, triggers, fetchWithDynamicItems, setters, title, onFetchError, fatal)
 		go dispatchEvents(ctx, refresh.ClickedCh, quit.ClickedCh, triggers)
 		go periodicTrigger(ctx, refreshInterval, triggers)
 	}, cancel)
@@ -54,6 +62,18 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 	default:
 		return nil
 	}
+}
+
+// systrayCheckboxAdder は、メニュー末尾へチェック項目を追加し、クリックで選択を切り替える。
+type systrayCheckboxAdder struct {
+	ctx   context.Context
+	sel   *Selection
+	title *TitleState
+}
+
+func (a systrayCheckboxAdder) AddCheckbox(provider, label string) {
+	item := systray.AddMenuItemCheckbox(provider+" "+label, "", true)
+	go toggleOnClick(a.ctx, item, a.sel, provider, label, a.title)
 }
 
 type systrayTitle struct{}

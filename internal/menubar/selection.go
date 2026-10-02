@@ -1,6 +1,9 @@
 package menubar
 
-import "sync"
+import (
+	"slices"
+	"sync"
+)
 
 // Source は Provider 名と、その Provider が持つ Window のラベルの組。
 type Source struct {
@@ -23,7 +26,7 @@ type Selection struct {
 func NewSelection(sources []Source) *Selection {
 	windows := make(map[string][]string, len(sources))
 	for _, s := range sources {
-		windows[s.Name] = s.Windows
+		windows[s.Name] = slices.Clone(s.Windows)
 	}
 	return &Selection{windows: windows, disabled: map[windowKey]bool{}}
 }
@@ -53,4 +56,16 @@ func (s *Selection) anyEnabled(provider string) bool {
 		}
 	}
 	return false
+}
+
+// declare は label を provider の Window として登録し、新規に登録したときだけ true を返す。
+// 登録済みのラベルの選択状態は変えない。登録したラベルは anyEnabled の対象になる。
+func (s *Selection) declare(provider, label string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if slices.Contains(s.windows[provider], label) {
+		return false
+	}
+	s.windows[provider] = append(s.windows[provider], label)
+	return true
 }
