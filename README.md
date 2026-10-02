@@ -8,6 +8,19 @@ macOS のメニューバーに常駐し、各 Provider の RateLimit 使用率�
 make build
 ```
 
+## macOS アプリとして出力
+
+macOS 上で次を実行すると、ビルドした Mac の CPU 向けに `dist/RateLimitBar.app` を生成する。
+
+```sh
+make app
+open dist/RateLimitBar.app
+```
+
+Finder でダブルクリックして起動でき、`/Applications` へコピーして使うこともできる。Dock には表示せず、メニューバーの `Quit` で終了する。ローカル利用向けのアプリで、配布用の Developer ID 署名・公証は行わない。
+
+Codex の使用率取得には、インストール・ログイン済みの `codex` CLI が必要。アプリ起動時に `$SHELL`（未設定なら `/bin/zsh`）のログイン環境を読み込むため、CLI の `PATH` は `~/.zprofile` などログイン時に読み込まれる設定へ追加する。対話シェル専用の `~/.zshrc` だけに設定した `PATH` は読み込まれない。
+
 ## テスト
 
 ```sh
