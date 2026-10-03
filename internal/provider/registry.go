@@ -7,10 +7,16 @@ type Registration struct {
 	Windows  []string
 }
 
-func DefaultRegistrations(autoRefreshClaude func() bool) []Registration {
+type Config struct {
+	AutoRefreshClaude func() bool
+	CodexPath         func() string
+	ClaudePath        func() string
+}
+
+func DefaultRegistrations(config Config) []Registration {
 	return []Registration{
-		{NewClaude(autoRefreshClaude), claudeWindowLabels()},
-		{NewCodex(), codexWindowLabels()},
+		{NewClaudeWithPath(config.AutoRefreshClaude, config.ClaudePath), claudeWindowLabels()},
+		{NewCodexWithPath(config.CodexPath), codexWindowLabels()},
 		{NewCursor(), []string{WindowMonthly}},
 	}
 }

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,6 +12,32 @@ import (
 
 	"ratelimitbar/internal/usage"
 )
+
+func TestClaudeRefreshUsesSelectedExecutableWithoutCLIOnPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PATH", t.TempDir())
+	cache := filepath.Join(home, ".claude.json")
+	if err := os.WriteFile(cache, []byte(refreshOldCache), 0600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "claude with spaces")
+	newCache := fmt.Sprintf(`{"cachedUsageUtilization":{"fetchedAtMs":%d,"utilization":{"five_hour":{"utilization":70},"seven_day":{"utilization":80}}}}`, time.Now().UnixMilli())
+	script := "#!/bin/sh\n" + `test "$1" = -p && test "$2" = /usage || exit 1` + "\n" + `printf '%s' '` + newCache + `' > "$HOME/.claude.json"` + "\n"
+	if err := os.WriteFile(path, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	c := NewClaudeWithPath(func() bool { return true }, func() string { return path })
+
+	got, err := c.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 70}, {Label: "Weekly", UsedPercent: 80}}, Stale: false}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Fetch() = %+v, want %+v", got, want)
+	}
+}
 
 const refreshOldCache = `{"cachedUsageUtilization":{"fetchedAtMs":1700000000000,"utilization":{"five_hour":{"utilization":23},"seven_day":{"utilization":48}}}}`
 const refreshNewCache = `{"cachedUsageUtilization":{"fetchedAtMs":1700001200000,"utilization":{"five_hour":{"utilization":70},"seven_day":{"utilization":80}}}}`
@@ -96,7 +123,7 @@ func TestRefreshClaudeCacheRunsUsageCommand(t *testing.T) {
 	}
 	t.Setenv("PATH", dir)
 	t.Setenv("CLAUDE_TEST_ARGS", marker)
-	if err := refreshClaudeCache(context.Background()); err != nil {
+	if err := refreshClaudeCache(context.Background(), ""); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(marker)
@@ -120,7 +147,7 @@ func TestRefreshClaudeCacheRespectsCancellation(t *testing.T) {
 	t.Setenv("PATH", dir)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := refreshClaudeCache(ctx); !errors.Is(err, context.Canceled) {
+	if err := refreshClaudeCache(ctx, ""); !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
 	}
 }
