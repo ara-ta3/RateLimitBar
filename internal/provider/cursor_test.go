@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"ratelimitbar/internal/provider"
 	"ratelimitbar/internal/usage"
@@ -231,5 +232,26 @@ func TestCursorFetchErrorsNeverContainTheToken(t *testing.T) {
 				t.Errorf("error %q contains the access token", err)
 			}
 		})
+	}
+}
+
+func TestCursorFetchKeepsBillingCycleEnd(t *testing.T) {
+	body := `{"billingCycleEnd":"2026-10-20T14:11:55.000Z","individualUsage":{"plan":{"totalPercentUsed":18}}}`
+	p := provider.NewCursorWith(&fakeAuthStore{tokens: []string{cursorToken}}, &fakeHTTP{do: respondWith(200, body)})
+	got, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []usage.Window{{Label: "Monthly", UsedPercent: 18, ResetsAt: time.Date(2026, 10, 20, 14, 11, 55, 0, time.UTC)}}
+	if !slices.Equal(got.Windows, want) {
+		t.Errorf("Windows = %v, want %v", got.Windows, want)
+	}
+}
+
+func TestCursorFetchRejectsMalformedBillingCycleEnd(t *testing.T) {
+	body := `{"billingCycleEnd":"invalid","individualUsage":{"plan":{"totalPercentUsed":18}}}`
+	p := provider.NewCursorWith(&fakeAuthStore{tokens: []string{cursorToken}}, &fakeHTTP{do: respondWith(200, body)})
+	if _, err := p.Fetch(context.Background()); err == nil {
+		t.Fatal("Fetch() error = nil, want error")
 	}
 }

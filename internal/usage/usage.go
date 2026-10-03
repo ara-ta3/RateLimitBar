@@ -1,9 +1,12 @@
 package usage
 
+import "time"
+
 // Window は 5h / Weekly / Monthly など、1つの制限期間の使用率を表す。
 type Window struct {
 	Label       string
 	UsedPercent int
+	ResetsAt    time.Time
 }
 
 // Usage は1つの Provider が持つ複数の Window をまとめる。

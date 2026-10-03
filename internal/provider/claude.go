@@ -58,7 +58,8 @@ func claudeWindowLabels() []string {
 }
 
 type claudeWindow struct {
-	Utilization *float64 `json:"utilization"`
+	Utilization *float64  `json:"utilization"`
+	ResetsAt    time.Time `json:"resets_at"`
 }
 
 // NewClaude は、ホームディレクトリの .claude.json を読む Provider を返す。
@@ -137,5 +138,5 @@ func claudeWindowUsage(label, key string, w *claudeWindow) (usage.Window, error)
 	if w == nil || w.Utilization == nil {
 		return usage.Window{}, fmt.Errorf("cachedUsageUtilization.utilization.%s is missing", key)
 	}
-	return usage.Window{Label: label, UsedPercent: int(math.Round(*w.Utilization))}, nil
+	return usage.Window{Label: label, UsedPercent: int(math.Round(*w.Utilization)), ResetsAt: w.ResetsAt}, nil
 }

@@ -40,6 +40,7 @@ type cursor struct {
 }
 
 type cursorUsageSummary struct {
+	BillingCycleEnd time.Time `json:"billingCycleEnd"`
 	IndividualUsage struct {
 		Plan struct {
 			TotalPercentUsed *float64 `json:"totalPercentUsed"`
@@ -88,7 +89,7 @@ func (c cursor) Fetch(ctx context.Context) (usage.Usage, error) {
 	if percent == nil {
 		return usage.Usage{}, errors.New("cursor usage response has no individualUsage.plan.totalPercentUsed")
 	}
-	return usage.Usage{Windows: []usage.Window{{Label: WindowMonthly, UsedPercent: int(math.Round(*percent))}}}, nil
+	return usage.Usage{Windows: []usage.Window{{Label: WindowMonthly, UsedPercent: int(math.Round(*percent)), ResetsAt: summary.BillingCycleEnd}}}, nil
 }
 
 // newCursorUsageRequest は、Cursor の Web と同じ session cookie(<userId>::<access token>)で request を作る。

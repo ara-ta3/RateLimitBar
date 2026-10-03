@@ -197,8 +197,8 @@ func TestCodexFetchReturnsWindowsFromTheResponseMatchingItsRequestId(t *testing.
 		t.Fatalf("Fetch() error = %v", err)
 	}
 	want := []usage.Window{
-		{Label: "5h", UsedPercent: 18},
-		{Label: "Weekly", UsedPercent: 20},
+		{Label: "5h", UsedPercent: 18, ResetsAt: time.Unix(1790882763, 0)},
+		{Label: "Weekly", UsedPercent: 20, ResetsAt: time.Unix(1791079296, 0)},
 		{Label: "GPT-5.3-Codex-Spark 5h", UsedPercent: 5},
 	}
 	if !slices.Equal(got.Windows, want) {

@@ -3,6 +3,7 @@ package provider
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"ratelimitbar/internal/usage"
 )
@@ -44,7 +45,7 @@ func TestParseCodexRateLimits(t *testing.T) {
 			"rateLimitsByLimitId":{"codex":{"limitId":"codex","limitName":null,
 				"primary":{"usedPercent":18,"windowDurationMins":300,"resetsAt":1790882763},
 				"secondary":{"usedPercent":20,"windowDurationMins":10080,"resetsAt":1791079296}}}}`,
-			want: []usage.Window{{Label: "5h", UsedPercent: 18}, {Label: "Weekly", UsedPercent: 20}},
+			want: []usage.Window{{Label: "5h", UsedPercent: 18, ResetsAt: time.Unix(1790882763, 0)}, {Label: "Weekly", UsedPercent: 20, ResetsAt: time.Unix(1791079296, 0)}},
 		},
 		{
 			name: "rateLimitsByLimitId absent",
