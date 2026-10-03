@@ -1,5 +1,0 @@
-Use case: text-localization
-Asset type: macOS app icon for RateLimitBar, which monitors usage limits across Claude, Codex, and other AI tools.
-Edit target: the supplied navy rounded-square gauge icon.
-Primary request: Replace the three bars at the bottom with the exact uppercase text "AI", clearly readable as a category name for artificial intelligence tools. Use bold, simple sans-serif letterforms, centered below the gauge needle, with cyan/teal coloring matching the gauge. Keep the gauge and amber endpoint above it. Simplify details enough to remain legible at small icon sizes.
-Constraints: Keep the rounded navy tile and its transparent outer corners, the front-on square framing, the gauge motif, and the refined macOS visual style. Only text is "AI", no other text, no provider logos, no watermark, no surrounding scene. Actual transparency outside the tile.
