@@ -7,11 +7,13 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"time"
 
 	"ratelimitbar/internal/usage"
 )
 
 type codexRateWindow struct {
+	ResetsAt           *int64  `json:"resetsAt"`
 	UsedPercent        float64 `json:"usedPercent"`
 	WindowDurationMins *int    `json:"windowDurationMins"`
 }
@@ -75,7 +77,7 @@ func parseCodexRateLimits(result []byte) ([]usage.Window, error) {
 }
 
 func limitWindows(limit codexLimit, labelPrefix string) []usage.Window {
-	percentByLabel := map[string]int{}
+	windowsByLabel := map[string]usage.Window{}
 	for _, w := range []*codexRateWindow{limit.Primary, limit.Secondary} {
 		if w == nil || w.WindowDurationMins == nil {
 			continue
@@ -84,14 +86,18 @@ func limitWindows(limit codexLimit, labelPrefix string) []usage.Window {
 		if !ok {
 			continue
 		}
-		if _, seen := percentByLabel[label]; !seen {
-			percentByLabel[label] = int(math.Round(w.UsedPercent))
+		if _, seen := windowsByLabel[label]; !seen {
+			window := usage.Window{Label: strings.TrimSpace(labelPrefix + label), UsedPercent: int(math.Round(w.UsedPercent))}
+			if w.ResetsAt != nil && *w.ResetsAt > 0 {
+				window.ResetsAt = time.Unix(*w.ResetsAt, 0)
+			}
+			windowsByLabel[label] = window
 		}
 	}
 	var windows []usage.Window
 	for _, label := range codexWindowOrder {
-		if percent, ok := percentByLabel[label]; ok {
-			windows = append(windows, usage.Window{Label: strings.TrimSpace(labelPrefix + label), UsedPercent: percent})
+		if window, ok := windowsByLabel[label]; ok {
+			windows = append(windows, window)
 		}
 	}
 	return windows

@@ -46,7 +46,7 @@ func TestClaudeFetchParsesFiveHourAndWeeklyUsage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
-	want := []usage.Window{{Label: "5h", UsedPercent: 23}, {Label: "Weekly", UsedPercent: 48}}
+	want := []usage.Window{{Label: "5h", UsedPercent: 23, ResetsAt: time.Date(2023, 11, 15, 0, 0, 0, 0, time.UTC)}, {Label: "Weekly", UsedPercent: 48, ResetsAt: time.Date(2023, 11, 20, 0, 0, 0, 0, time.UTC)}}
 	if len(got.Windows) != len(want) {
 		t.Fatalf("Windows = %v, want %v", got.Windows, want)
 	}
@@ -193,5 +193,21 @@ func TestClaudeFetchRereadsFileOnEveryCall(t *testing.T) {
 func TestDefaultClaudeStaleAfterIsPositive(t *testing.T) {
 	if provider.DefaultClaudeStaleAfter <= 0 {
 		t.Errorf("DefaultClaudeStaleAfter = %v, want > 0", provider.DefaultClaudeStaleAfter)
+	}
+}
+
+func TestClaudeFetchAllowsNullResetTime(t *testing.T) {
+	cache := `{"cachedUsageUtilization":{"fetchedAtMs":1700000000000,"utilization":{"five_hour":{"utilization":0,"resets_at":null},"seven_day":{"utilization":0,"resets_at":null}}}}`
+	p := newClaudeAt(writeClaudeJSON(t, cache), fetchedAt, time.Hour)
+	got, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []usage.Window{{Label: "5h", UsedPercent: 0}, {Label: "Weekly", UsedPercent: 0}}
+	if len(got.Windows) != len(want) {
+		t.Fatalf("Windows = %v, want %v", got.Windows, want)
+	}
+	if got.Windows[0] != want[0] || got.Windows[1] != want[1] {
+		t.Errorf("Windows = %v, want %v", got.Windows, want)
 	}
 }
