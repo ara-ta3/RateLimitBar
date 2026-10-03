@@ -25,7 +25,7 @@ func TestDefaultRegistrationsDeclareFixedWindowLabels(t *testing.T) {
 		"Cursor": {"Monthly"},
 	}
 
-	registrations := provider.DefaultRegistrations()
+	registrations := provider.DefaultRegistrations(nil)
 
 	if len(registrations) != len(want) {
 		t.Fatalf("len(DefaultRegistrations()) = %d, want %d", len(registrations), len(want))
@@ -42,7 +42,7 @@ func TestDefaultRegistrationsKeepClaudeWindowsMatchingFetchedLabels(t *testing.T
 	// NewClaude は実ホームの .claude.json を読むため、Fetch は同じ形式の一時ファイルで行う。
 	claude := newClaudeAt(writeClaudeJSON(t, validCache), fetchedAt, time.Hour)
 	var claudeWindows []string
-	for _, r := range provider.DefaultRegistrations() {
+	for _, r := range provider.DefaultRegistrations(nil) {
 		if r.Provider.Name() == "Claude" {
 			claudeWindows = r.Windows
 		}

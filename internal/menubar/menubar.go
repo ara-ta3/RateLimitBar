@@ -17,7 +17,7 @@ const loadingTitle = "Loading..."
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error)) error {
+func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), options ...Option) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -40,6 +40,13 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			}
 		}
 		systray.AddSeparator()
+		for _, option := range options {
+			item := systray.AddMenuItemCheckbox(option.Title, "", false)
+			go toggleOptionOnClick(ctx, item.ClickedCh, item, option.OnChange)
+		}
+		if len(options) > 0 {
+			systray.AddSeparator()
+		}
 		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title})
 		refresh := systray.AddMenuItem("Refresh", "")
 		quit := systray.AddMenuItem("Quit", "")
