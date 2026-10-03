@@ -112,6 +112,11 @@ func TestRefreshClaudeCacheRunsUsageCommand(t *testing.T) {
 }
 
 func TestRefreshClaudeCacheRespectsCancellation(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "claude"), []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := refreshClaudeCache(ctx); !errors.Is(err, context.Canceled) {
