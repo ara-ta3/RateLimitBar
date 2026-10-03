@@ -21,7 +21,7 @@ func refreshTestClaude(t *testing.T) claude {
 	if err := os.WriteFile(path, []byte(refreshOldCache), 0600); err != nil {
 		t.Fatal(err)
 	}
-	return claude{path: path, staleAfter: 15 * time.Minute, now: func() time.Time { return time.UnixMilli(1700001200000) }}
+	return claude{path: path, staleAfter: 15 * time.Minute, autoRefresh: func() bool { return true }, now: func() time.Time { return time.UnixMilli(1700001200000) }}
 }
 
 func TestClaudeRefreshesStaleCacheAndReadsUpdatedUsage(t *testing.T) {
@@ -52,6 +52,7 @@ func TestClaudeRefreshesStaleCacheAndReadsUpdatedUsage(t *testing.T) {
 
 func TestClaudeWithoutAutoRefreshKeepsStaleCache(t *testing.T) {
 	c := refreshTestClaude(t)
+	c.autoRefresh = nil
 	got, err := c.Fetch(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -136,13 +137,30 @@ func TestClaudeRemainsStaleWhenCommandDoesNotUpdateCache(t *testing.T) {
 	}
 }
 
-func TestNewClaudeEnablesAutoRefreshOnlyWhenRequested(t *testing.T) {
-	disabled := NewClaude(false).(claude)
-	if disabled.refresh != nil {
-		t.Fatal("auto refresh enabled with false")
+func TestClaudeAutoRefreshCanBeToggledDuringExecution(t *testing.T) {
+	c := refreshTestClaude(t)
+	enabled := false
+	c.autoRefresh = func() bool { return enabled }
+	calls := 0
+	c.refresh = func(context.Context) error { calls++; return nil }
+	if _, err := c.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
 	}
-	enabled := NewClaude(true).(claude)
-	if enabled.refresh == nil {
-		t.Fatal("auto refresh disabled with true")
+	if calls != 0 {
+		t.Fatalf("refresh calls while disabled = %d, want 0", calls)
+	}
+	enabled = true
+	if _, err := c.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("refresh calls while enabled = %d, want 1", calls)
+	}
+	enabled = false
+	if _, err := c.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("refresh calls after disabling = %d, want 1", calls)
 	}
 }

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -25,13 +25,12 @@ func main() {
 }
 
 func run() error {
-	autoRefreshClaude := flag.Bool("claude-auto-refresh", false, "Automatically refresh stale Claude usage with claude -p /usage")
-	flag.Parse()
+	var autoRefreshClaude atomic.Bool
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	registrations := provider.DefaultRegistrations(*autoRefreshClaude)
+	registrations := provider.DefaultRegistrations(autoRefreshClaude.Load)
 	providers := make([]provider.Provider, len(registrations))
 	sources := make([]menubar.Source, len(registrations))
 	for i, r := range registrations {
@@ -43,5 +42,5 @@ func run() error {
 	}
 	return menubar.Run(ctx, sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
-	})
+	}, menubar.Option{Title: "Claudeのキャッシュを自動更新", OnChange: autoRefreshClaude.Store})
 }

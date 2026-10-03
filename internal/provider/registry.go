@@ -7,7 +7,7 @@ type Registration struct {
 	Windows  []string
 }
 
-func DefaultRegistrations(autoRefreshClaude bool) []Registration {
+func DefaultRegistrations(autoRefreshClaude func() bool) []Registration {
 	return []Registration{
 		{NewClaude(autoRefreshClaude), claudeWindowLabels()},
 		{NewCodex(), codexWindowLabels()},

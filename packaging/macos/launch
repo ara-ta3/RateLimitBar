@@ -2,4 +2,4 @@
 set -eu
 
 executable="$(dirname "$0")/ratelimitbar"
-exec "${SHELL:-/bin/zsh}" -l -c 'executable="$1"; shift; exec "$executable" "$@"' -- "$executable" "$@"
+exec "${SHELL:-/bin/zsh}" -l -c 'exec "$1"' -- "$executable"

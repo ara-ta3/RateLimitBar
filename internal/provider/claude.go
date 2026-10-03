@@ -19,11 +19,12 @@ import (
 const DefaultClaudeStaleAfter = 15 * time.Minute
 
 type claude struct {
-	path       string
-	pathErr    error
-	staleAfter time.Duration
-	now        func() time.Time
-	refresh    func(context.Context) error
+	path        string
+	pathErr     error
+	staleAfter  time.Duration
+	now         func() time.Time
+	refresh     func(context.Context) error
+	autoRefresh func() bool
 }
 
 type claudeUtilization struct {
@@ -62,16 +63,12 @@ type claudeWindow struct {
 
 // NewClaude は、ホームディレクトリの .claude.json を読む Provider を返す。
 // ホームディレクトリを特定できない場合は、Fetch が error を返す。
-func NewClaude(autoRefresh bool) Provider {
+func NewClaude(autoRefresh func() bool) Provider {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return claude{pathErr: fmt.Errorf("resolve home directory: %w", err)}
 	}
-	c := claude{path: filepath.Join(home, ".claude.json"), staleAfter: DefaultClaudeStaleAfter, now: time.Now}
-	if autoRefresh {
-		c.refresh = refreshClaudeCache
-	}
-	return c
+	return claude{path: filepath.Join(home, ".claude.json"), staleAfter: DefaultClaudeStaleAfter, now: time.Now, refresh: refreshClaudeCache, autoRefresh: autoRefresh}
 }
 
 func NewClaudeFromFile(path string, staleAfter time.Duration, now func() time.Time) Provider {
@@ -82,7 +79,7 @@ func (claude) Name() string { return "Claude" }
 
 func (c claude) Fetch(ctx context.Context) (usage.Usage, error) {
 	u, err := c.readCache()
-	if err != nil || !u.Stale || c.refresh == nil {
+	if err != nil || !u.Stale || c.autoRefresh == nil || !c.autoRefresh() {
 		return u, err
 	}
 	if err := c.refresh(ctx); err != nil {
