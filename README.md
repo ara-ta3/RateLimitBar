@@ -34,3 +34,20 @@ make run
 ```
 
 メニューバーのタイトルには、オンにした Provider/Window の使用率が `Claude 5h 23% / W 48%  Codex 5h 61%` の形で並ぶ（取得前とすべてオフのときは `RateLimit`）。メニューのチェック付き項目で Window ごとにオン/オフを切り替えられる（起動時は全てオンで、設定は保持しない）。メニューの `Refresh` で再取得、`Quit` で終了する。ターミナルから起動した場合は `Ctrl+C` でも終了できる。
+
+## Claudeのキャッシュ自動更新
+
+`-claude-auto-refresh` を付けて起動すると、Claudeのキャッシュが15分より古い場合に `claude -p '/usage'` を実行し、完了後にキャッシュを読み直す。自動更新は初期状態ではオフで、通常は1分ごとにローカルファイルを読み直す。
+
+```sh
+make build
+./bin/ratelimitbar -claude-auto-refresh
+```
+
+macOSアプリでは、終了してから次のように起動する。
+
+```sh
+open dist/RateLimitBar.app --args -claude-auto-refresh
+```
+
+インストール・ログイン済みの `claude` CLIが必要。Claude Codeによる更新時は通信が発生する。コマンドはプロジェクト外の一時ディレクトリで実行し、30秒でタイムアウトする。実行に失敗した場合は取得エラーを表示し、次の更新時に再試行する。キャッシュがない場合や読み取れない場合は、自動更新の対象にしない。

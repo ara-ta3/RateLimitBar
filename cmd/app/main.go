@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -24,10 +25,13 @@ func main() {
 }
 
 func run() error {
+	autoRefreshClaude := flag.Bool("claude-auto-refresh", false, "Automatically refresh stale Claude usage with claude -p /usage")
+	flag.Parse()
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	registrations := provider.DefaultRegistrations()
+	registrations := provider.DefaultRegistrations(*autoRefreshClaude)
 	providers := make([]provider.Provider, len(registrations))
 	sources := make([]menubar.Source, len(registrations))
 	for i, r := range registrations {
