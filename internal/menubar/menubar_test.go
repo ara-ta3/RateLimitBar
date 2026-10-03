@@ -7,8 +7,16 @@ import (
 	"testing"
 
 	"ratelimitbar/internal/menubar"
+	"ratelimitbar/internal/provider"
 	"ratelimitbar/internal/usage"
 )
+
+func TestFormatResultGuidesUserToCLISettingsWhenExecutableIsUnavailable(t *testing.T) {
+	got := menubar.FormatResult(usage.Result{Provider: "Codex", Err: provider.ErrExecutableUnavailable})
+	if got != "Codex: CLIが見つかりません（取得元の設定…）" {
+		t.Fatalf("FormatResult() = %q", got)
+	}
+}
 
 func success(name string, windows ...usage.Window) usage.Result {
 	return usage.Result{Provider: name, Usage: usage.Usage{Windows: windows}}

@@ -33,7 +33,21 @@ type codex struct {
 
 // NewCodex は、PATH 上の codex を Fetch ごとに起動する Provider を返す。
 func NewCodex() Provider {
-	return NewCodexWithLauncher(launchCodexFromPath, DefaultCodexTimeout)
+	return NewCodexWithPath(nil)
+}
+
+func NewCodexWithPath(path func() string) Provider {
+	return NewCodexWithLauncher(func(ctx context.Context) (CodexProcess, error) {
+		configured := ""
+		if path != nil {
+			configured = path()
+		}
+		executable, err := ResolveExecutable("codex", configured)
+		if err != nil {
+			return CodexProcess{}, err
+		}
+		return launchCodex(ctx, string(executable))
+	}, DefaultCodexTimeout)
 }
 
 func NewCodexWithLauncher(launch CodexLauncher, timeout time.Duration) Provider {
@@ -42,11 +56,7 @@ func NewCodexWithLauncher(launch CodexLauncher, timeout time.Duration) Provider 
 
 func (codex) Name() string { return "Codex" }
 
-func launchCodexFromPath(ctx context.Context) (CodexProcess, error) {
-	path, err := exec.LookPath("codex")
-	if err != nil {
-		return CodexProcess{}, fmt.Errorf("find codex: %w", err)
-	}
+func launchCodex(ctx context.Context, path string) (CodexProcess, error) {
 	cmd := exec.CommandContext(ctx, path, "app-server")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

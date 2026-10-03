@@ -1,6 +1,7 @@
 package menubar
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -21,6 +22,9 @@ func FormatResult(r usage.Result) string {
 
 func formatResultAt(r usage.Result, now time.Time) string {
 	if r.Err != nil {
+		if errors.Is(r.Err, provider.ErrExecutableUnavailable) {
+			return fmt.Sprintf("%s: CLIが見つかりません（取得元の設定…）", r.Provider)
+		}
 		return fmt.Sprintf("%s: %s", r.Provider, failedToFetch)
 	}
 	windows := make([]string, len(r.Usage.Windows))

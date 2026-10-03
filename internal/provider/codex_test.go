@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"testing"
@@ -329,5 +331,73 @@ func TestCodexFetchWithoutCodexOnPathReturnsError(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Fetch() error = nil, want an error when codex is not on PATH")
+	}
+}
+
+func writeCodexExecutable(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "codex with spaces")
+	script := `#!/bin/sh
+printf '%s' "$0" > "$CODEX_TEST_EXECUTABLE"
+while IFS= read -r request; do
+    case "$request" in
+        *'"method":"initialize"'*) printf '%s\n' '{"id":1,"result":{}}' ;;
+        *'"method":"account/rateLimits/read"'*) printf '%s\n' '{"id":2,"result":` + compactJSON(codexRateLimitsResultBody) + `}' ;;
+    esac
+done
+`
+	if err := os.WriteFile(path, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestCodexFetchUsesSelectedExecutableWithoutCLIOnPath(t *testing.T) {
+	path := writeCodexExecutable(t)
+	marker := filepath.Join(t.TempDir(), "executed")
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("CODEX_TEST_EXECUTABLE", marker)
+	p := provider.NewCodexWithPath(func() string { return path })
+
+	got, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []usage.Window{
+		{Label: "5h", UsedPercent: 18, ResetsAt: time.Unix(1790882763, 0)},
+		{Label: "Weekly", UsedPercent: 20, ResetsAt: time.Unix(1791079296, 0)},
+		{Label: "GPT-5.3-Codex-Spark 5h", UsedPercent: 5},
+	}
+	if !slices.Equal(got.Windows, want) {
+		t.Fatalf("Windows = %+v, want %+v", got.Windows, want)
+	}
+	executed, err := os.ReadFile(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(executed) != path {
+		t.Fatalf("executed = %q, want %q", executed, path)
+	}
+}
+
+func TestCodexUsesNewSelectionOnNextFetch(t *testing.T) {
+	path := writeCodexExecutable(t)
+	marker := filepath.Join(t.TempDir(), "executed")
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("CODEX_TEST_EXECUTABLE", marker)
+	p := provider.NewCodexWithPath(func() string { return path })
+	if _, err := p.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	path = writeCodexExecutable(t)
+	if _, err := p.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	executed, err := os.ReadFile(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(executed) != path {
+		t.Fatalf("executed after reselection = %q, want %q", executed, path)
 	}
 }

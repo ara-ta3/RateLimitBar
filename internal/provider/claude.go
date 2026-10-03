@@ -65,11 +65,21 @@ type claudeWindow struct {
 // NewClaude は、ホームディレクトリの .claude.json を読む Provider を返す。
 // ホームディレクトリを特定できない場合は、Fetch が error を返す。
 func NewClaude(autoRefresh func() bool) Provider {
+	return NewClaudeWithPath(autoRefresh, nil)
+}
+
+func NewClaudeWithPath(autoRefresh func() bool, cliPath func() string) Provider {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return claude{pathErr: fmt.Errorf("resolve home directory: %w", err)}
 	}
-	return claude{path: filepath.Join(home, ".claude.json"), staleAfter: DefaultClaudeStaleAfter, now: time.Now, refresh: refreshClaudeCache, autoRefresh: autoRefresh}
+	return claude{path: filepath.Join(home, ".claude.json"), staleAfter: DefaultClaudeStaleAfter, now: time.Now, refresh: func(ctx context.Context) error {
+		path := ""
+		if cliPath != nil {
+			path = cliPath()
+		}
+		return refreshClaudeCache(ctx, path)
+	}, autoRefresh: autoRefresh}
 }
 
 func NewClaudeFromFile(path string, staleAfter time.Duration, now func() time.Time) Provider {
@@ -89,10 +99,14 @@ func (c claude) Fetch(ctx context.Context) (usage.Usage, error) {
 	return c.readCache()
 }
 
-func refreshClaudeCache(ctx context.Context) error {
+func refreshClaudeCache(ctx context.Context, configured string) error {
+	path, err := ResolveExecutable("claude", configured)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "claude", "-p", "/usage")
+	cmd := exec.CommandContext(ctx, string(path), "-p", "/usage")
 	cmd.Dir = os.TempDir()
 	return cmd.Run()
 }

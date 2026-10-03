@@ -17,7 +17,7 @@ const loadingTitle = "Loading..."
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), options ...Option) error {
+func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), actions []Action, options ...Option) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -47,14 +47,30 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		if len(options) > 0 {
 			systray.AddSeparator()
 		}
+		triggers := make(chan struct{}, 1)
+		triggers <- struct{}{}
+		actionItems := make([]TitleSetter, len(actions))
+		var settingsMenu *systray.MenuItem
+		if len(actions) > 0 {
+			settingsMenu = systray.AddMenuItem("取得元の設定", "")
+		}
+		for i, action := range actions {
+			item := settingsMenu.AddSubMenuItem(action.Title(), "")
+			actionItems[i] = item
+			go runActionOnClick(ctx, item.ClickedCh, action.OnClick, triggers)
+		}
+		if len(actions) > 0 {
+			systray.AddSeparator()
+		}
 		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title})
 		refresh := systray.AddMenuItem("Refresh", "")
 		quit := systray.AddMenuItem("Quit", "")
 
-		triggers := make(chan struct{}, 1)
-		triggers <- struct{}{}
 		fetchWithDynamicItems := func(ctx context.Context) ([]usage.Result, error) {
 			results, err := fetch(ctx)
+			for i, action := range actions {
+				actionItems[i].SetTitle(action.Title())
+			}
 			dynamicItems.Apply(results)
 			return results, err
 		}
