@@ -1,51 +1,152 @@
-# RateLimitBar
+<p align="center">
+  <img src="packaging/macos/AppIcon.png" width="128" alt="RateLimitBar icon">
+</p>
 
-macOS のメニューバーに常駐し、各 Provider の RateLimit 使用率を表示するアプリ。Claude は `~/.claude.json` の `cachedUsageUtilization` から実データを表示し、60 秒ごとに自動更新する。キャッシュが 15 分より古い場合は `(stale)` を付ける。Codex は `codex app-server` から、Cursor は Keychain の access token と usage API から実データを取得して表示する。Codex のモデル固有の limit は、取得できたときにメニューの切り替え項目へ追加する。
+<h1 align="center">RateLimitBar</h1>
 
-## ビルド
+<p align="center">English | <a href="README.ja.md">日本語</a></p>
 
-```sh
-make build
+<p align="center">Claude, Codex, and Cursor usage at a glance in your macOS menu bar.</p>
+
+<p align="center">
+  <a href="https://github.com/ara-ta3/RateLimitBar/actions/workflows/ci.yml"><img src="https://github.com/ara-ta3/RateLimitBar/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/platform-macOS-black" alt="macOS">
+  <img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white" alt="Go 1.27">
+</p>
+
+RateLimitBar is a macOS menu bar app that displays usage percentages and the time remaining until rate limits reset for AI coding tools. It refreshes every 60 seconds and lets you choose which services and usage windows to display.
+
+```text
+Claude 5h 23% (2h30m) / W 48% (3d4h)  Codex 5h 61% (1h20m)  Cursor M 18% (12d3h)
 ```
 
-## macOS アプリとして出力
+*Example display. `W` means weekly and `M` means monthly. Percentages indicate usage consumed.*
 
-macOS 上で次を実行すると、ビルドした Mac の CPU 向けに `dist/RateLimitBar.app` を生成する。
+## Features
+
+- **Three services in one place** — View Claude, Codex, and Cursor usage.
+- **Reset countdowns** — See the time remaining when a reset timestamp is available.
+- **Customizable display** — Toggle individual usage windows for each service.
+- **Automatic and manual refresh** — Updates every 60 seconds, with a `Refresh` menu item for immediate updates.
+- **Menu bar app** — Launch from Finder without adding an icon to the Dock.
+
+## Supported services
+
+| Service | Usage windows | Data source and requirements |
+| --- | --- | --- |
+| Claude | 5-hour and weekly | `cachedUsageUtilization` in `~/.claude.json`. Requires a Claude Code usage cache |
+| Codex | 5-hour, weekly, and model-specific limits when available | `codex app-server`. Requires the `codex` CLI to be installed and signed in |
+| Cursor | Monthly | Access token from macOS Keychain and the usage API. Requires Cursor credentials stored in Keychain |
+
+Claude normally reads its local cache. Cached data older than 15 minutes is marked `(stale)` in the dropdown menu. You can optionally enable [automatic cache refresh](#automatic-claude-cache-refresh).
+
+## Getting started
+
+### Requirements
+
+- macOS
+- Go 1.27 or later
+- Xcode Command Line Tools (install with `xcode-select --install`)
+- A signed-in CLI or local credentials for the services you use (see the table above)
+
+### Build and launch from source
 
 ```sh
+git clone https://github.com/ara-ta3/RateLimitBar.git
+cd RateLimitBar
 make app
 open dist/RateLimitBar.app
 ```
 
-Finder でダブルクリックして起動でき、`/Applications` へコピーして使うこともできる。Dock には表示せず、メニューバーの `Quit` で終了する。ローカル利用向けのアプリで、配布用の Developer ID 署名・公証は行わない。
+This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used to build it. You can launch it by double-clicking in Finder or copy it to `/Applications`.
 
-Codex の使用率取得には、インストール・ログイン済みの `codex` CLI が必要。アプリ起動時に `$SHELL`（未設定なら `/bin/zsh`）のログイン環境を読み込む。対話シェル専用の `~/.zshrc` だけに CLI の `PATH` を設定している場合は、アプリのメニューから実行ファイルを指定できる。
+> The generated app is intended for local use. It is not Developer ID signed or notarized.
 
-### CLIの取得元を設定
+## Usage
 
-メニューの「取得元の設定」に、Codex と Claude の CLI のパスを表示する。Claude CLI はキャッシュの自動更新に使用し、通常の使用率表示では必要ない。Cursor は Keychain と API を使用するため、この設定の対象には含めない。
+Click the menu bar display to view usage details and settings. Some menu labels are currently in Japanese; the labels below match the app.
 
-- 自動検出では、アプリの `PATH` から `codex` / `claude` を探す。
-- 「未検出（指定…）」または表示されたパスをクリックすると、実行ファイルを選択できる。ファイル選択画面で `⌘⇧G` を押すと、ターミナルの `command -v codex` / `command -v claude` で確認したパスを入力できる。
-- 指定したパスは `~/Library/Application Support/RateLimitBar/settings.json` に保存し、次回起動時にも使用する。指定後は自動で再取得する。
-- 指定したパスを優先し、ファイルが削除された場合は「未検出」と表示する。再指定するか、「取得元の指定をすべて解除（自動検出に戻す）」で PATH 検索に戻せる。
+| Menu item | Action |
+| --- | --- |
+| Checkbox items for each service | Toggle individual usage windows in the menu bar |
+| `Refresh` | Fetch usage again |
+| 取得元の設定 (CLI source settings) | View or change the Codex and Claude CLI paths |
+| Claudeのキャッシュを自動更新 (Automatically refresh Claude cache) | Update stale cache data using the Claude CLI |
+| `Quit` | Exit the app |
 
-## テスト
+All display items are enabled at startup. Display selections and the Claude automatic cache refresh toggle are not saved between launches.
+
+Countdowns update when usage is fetched. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows `RateLimit`.
+
+### Configure CLI paths
+
+By default, the app looks for `codex` and `claude` on its `PATH`. When launched as a macOS app, it loads the login environment of `$SHELL`, falling back to `/bin/zsh` if unset.
+
+If a CLI cannot be found, or you want to use a specific executable:
+
+1. Open 取得元の設定 (CLI source settings).
+2. Click 未検出（指定…） (Not found — choose…) or the displayed CLI path.
+3. Select the executable. Press `⌘⇧G` in the file picker to enter a path directly.
+
+Find CLI paths in your terminal:
 
 ```sh
-make test
+command -v codex
+command -v claude
 ```
 
-## 起動
+Selected paths are saved in `~/Library/Application Support/RateLimitBar/settings.json` and reused on subsequent launches. Selecting a path also triggers a refresh.
+
+If a selected executable is deleted, the app shows 未検出 (Not found). Select another executable, or choose 取得元の指定をすべて解除（自動検出に戻す） (Clear all selected paths — return to automatic detection) to resume searching `PATH`.
+
+The Claude CLI is used only for automatic cache refresh; it is not required to display the existing cache. Cursor uses Keychain and its API, so it has no CLI path setting.
+
+### Automatic Claude cache refresh
+
+Enable Claudeのキャッシュを自動更新 (Automatically refresh Claude cache) to run the following command when the cache is older than 15 minutes, then read the cache again:
 
 ```sh
-make run
+claude -p '/usage'
 ```
 
-メニューバーのタイトルには、オンにした Provider/Window が `Claude 5h 23% (2h30m) / W 48% (3d4h)  Codex 5h 61% (1h20m)` の形で、使用率とリセットまでの残り時間が並ぶ（取得前とすべてオフのときは `RateLimit`）。残り時間は1分ごとの取得時に更新し、1分未満は `<1m`、リセット時刻を過ぎた場合は `0m` と表示する。リセット時刻が取得できない Windowは使用率だけを表示する。ドロップダウンにも同じ残り時間を表示する。メニューのチェック付き項目で Window ごとにオン/オフを切り替えられる（起動時は全てオンで、設定は保持しない）。メニューの `Refresh` で再取得、`Quit` で終了する。ターミナルから起動した場合は `Ctrl+C` でも終了できる。
+- Disabled at startup; you can toggle it while the app is running.
+- Requires the `claude` CLI to be installed and signed in. Refreshing involves network communication.
+- Runs in a temporary directory outside the project, with a 30-second timeout.
+- On failure, the app displays a fetch error and retries on the next update.
+- Missing or unreadable caches are not automatically refreshed.
 
-## Claudeのキャッシュ自動更新
+## Troubleshooting
 
-メニューバーの「Claudeのキャッシュを自動更新」をチェックすると、キャッシュが15分より古い場合に `claude -p '/usage'` を実行し、完了後にキャッシュを読み直す。アプリを起動したままオン・オフを切り替えられる。起動時はオフで、設定は保持しない。通常は1分ごとにローカルファイルを読み直す。
+| Symptom | What to check |
+| --- | --- |
+| CLI not found | Select the executable under 取得元の設定 (CLI source settings). A `PATH` configured only in `~/.zshrc` is not loaded when launching from Finder |
+| Claude shows `(stale)` | The cache is older than 15 minutes. Update it through Claude Code or enable automatic cache refresh |
+| `Failed to fetch` | Check the service's authentication and data source, then select `Refresh`. Cursor requires Keychain credentials and access to its usage API |
 
-インストール・ログイン済みの `claude` CLIが必要。Claude Codeによる更新時は通信が発生する。コマンドはプロジェクト外の一時ディレクトリで実行し、30秒でタイムアウトする。実行に失敗した場合は取得エラーを表示し、次の更新時に再試行する。キャッシュがない場合や読み取れない場合は、自動更新の対象にしない。
+## Development
+
+```sh
+make build      # Build bin/ratelimitbar
+make run        # Build and launch from the terminal
+make app        # Build dist/RateLimitBar.app
+make test       # Run tests
+make fmt/check  # Apply Go formatting and check for no changes
+```
+
+When launched from the terminal, you can also exit with `Ctrl+C`. CI runs formatting checks, builds, and tests on macOS.
+
+### Project structure
+
+```text
+cmd/app/           Entry point and settings actions
+internal/config/   CLI path persistence
+internal/dialog/   File picker dialog
+internal/menubar/  Menu bar display, interactions, and refresh
+internal/provider/ Usage fetching for each service
+internal/usage/    Usage data types
+packaging/macos/   App icons, launcher, and Info.plist
+```
+
+## Feedback and contributing
+
+Bug reports and feature requests are welcome in [Issues](https://github.com/ara-ta3/RateLimitBar/issues), and changes are welcome as pull requests. For bug reports, include your macOS version, the affected service, and steps to reproduce. Do not include authentication tokens or other secrets.
