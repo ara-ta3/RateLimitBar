@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'packaging/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          version=$(plutil -extract CFBundleShortVersionString raw packaging/macos/Info.plist)
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "Expected a version tag such as v0.1.0" >&2
+              exit 1
+            fi
+            version=${GITHUB_REF_NAME#v}
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Check formatting and test
+        run: |
+          make fmt/check
+          make test
+      - name: Build app
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          test "$(go env GOARCH)" = "$EXPECTED_ARCH"
+          make app
+          plutil -replace CFBundleShortVersionString -string "$VERSION" dist/RateLimitBar.app/Contents/Info.plist
+          plutil -replace CFBundleVersion -string "$GITHUB_RUN_NUMBER" dist/RateLimitBar.app/Contents/Info.plist
+          plutil -insert LSMinimumSystemVersion -string "$MACOSX_DEPLOYMENT_TARGET" dist/RateLimitBar.app/Contents/Info.plist
+          plutil -lint dist/RateLimitBar.app/Contents/Info.plist
+      - name: Package app
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/RateLimitBar.app "dist/RateLimitBar-v${VERSION}-macOS-${ARCH}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-${{ matrix.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macOS-*
+          merge-multiple: true
+          path: dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd dist
+          sha256sum ./*.zip > SHA256SUMS.txt
+          cat > release-notes.md <<'EOF'
+          開発者向けの未署名・未公証のmacOSアプリです。macOS 14以降を対象にビルドしています。
+
+          - Apple Silicon（Mシリーズ）: `macOS-arm64.zip`
+          - Intel Mac: `macOS-amd64.zip`
+
+          対応するZIPを展開し、RateLimitBar.appをApplicationsへコピーしてください。
+          GoやXcodeは不要ですが、利用するサービスの認証済みCLIまたはローカル認証情報が必要です。
+          macOSに起動を止められた場合は、起動を試した後に「システム設定 → プライバシーとセキュリティ」から許可してください。
+          EOF
+          gh release create "$RELEASE_TAG" ./*.zip SHA256SUMS.txt \
+            --verify-tag --title "RateLimitBar $RELEASE_TAG" \
+            --generate-notes --notes-file release-notes.md

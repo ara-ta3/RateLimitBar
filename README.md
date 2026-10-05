@@ -42,6 +42,17 @@ Claude normally reads its local cache. Cached data older than 15 minutes is mark
 
 ## Getting started
 
+### Install a release
+
+Download the ZIP for your Mac's CPU from [Releases](https://github.com/ara-ta3/RateLimitBar/releases), extract it, and copy `RateLimitBar.app` to `/Applications`.
+
+- Apple Silicon (M-series): `RateLimitBar-v<version>-macOS-arm64.zip`
+- Intel Mac: `RateLimitBar-v<version>-macOS-amd64.zip`
+
+Release builds target macOS 14 or later. Go and Xcode are not required, but you still need a signed-in CLI or local credentials for the services you use.
+
+These developer releases are not Developer ID signed or notarized. If macOS blocks the app, try opening it first, then allow it in System Settings → Privacy & Security.
+
 ### Requirements
 
 - macOS
@@ -146,6 +157,21 @@ internal/provider/ Usage fetching for each service
 internal/usage/    Usage data types
 packaging/macos/   App icons, launcher, and Info.plist
 ```
+
+### Releases
+
+Merge the changes containing the Release workflow into `main`, then push a `v<major>.<minor>.<patch>` tag pointing to the release commit. The initial version is `v0.1.0`.
+
+```sh
+git switch main
+git pull --ff-only origin main
+git tag -a v0.1.0 -m 'Release v0.1.0'
+git push origin v0.1.0
+```
+
+GitHub Actions checks formatting, runs tests, and builds the app on both Apple Silicon and Intel runners. After both builds succeed, it publishes a GitHub Release with both ZIPs and `SHA256SUMS.txt`. The app version is taken from the tag. No signing secrets are needed.
+
+Pull requests changing relevant files also build both architectures, with ZIPs available as workflow artifacts. Pull requests do not publish releases.
 
 ## Feedback and contributing
 
