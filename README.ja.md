@@ -171,8 +171,6 @@ git push origin v0.1.0
 
 GitHub ActionsがApple Silicon・Intelそれぞれで整形チェック、テスト、アプリのビルドを行い、両方が成功したらZIPと `SHA256SUMS.txt` を添付したGitHub Releaseを公開します。アプリのバージョンにはタグの値を設定します。署名用のSecretは不要です。
 
-関連ファイルを変更するPRでも両CPU向けのビルドを実行し、ZIPをworkflowのArtifactsで確認できます。PRからはReleaseを公開しません。
-
 ## フィードバック・コントリビューション
 
 不具合報告や機能提案は [Issues](https://github.com/ara-ta3/RateLimitBar/issues) へ、変更案は Pull Request で受け付けています。不具合報告には、macOS のバージョン、対象サービス、再現手順を添えてください。認証トークンなどの機密情報は含めないでください。

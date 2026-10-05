@@ -171,8 +171,6 @@ git push origin v0.1.0
 
 GitHub Actions checks formatting, runs tests, and builds the app on both Apple Silicon and Intel runners. After both builds succeed, it publishes a GitHub Release with both ZIPs and `SHA256SUMS.txt`. The app version is taken from the tag. No signing secrets are needed.
 
-Pull requests changing relevant files also build both architectures, with ZIPs available as workflow artifacts. Pull requests do not publish releases.
-
 ## Feedback and contributing
 
 Bug reports and feature requests are welcome in [Issues](https://github.com/ara-ta3/RateLimitBar/issues), and changes are welcome as pull requests. For bug reports, include your macOS version, the affected service, and steps to reproduce. Do not include authentication tokens or other secrets.
