@@ -42,6 +42,17 @@ Claude は通常、ローカルのキャッシュを読み取ります。15 分�
 
 ## セットアップ
 
+### リリース版をインストール
+
+[Releases](https://github.com/ara-ta3/RateLimitBar/releases) から、MacのCPUに対応するZIPをダウンロードして展開し、`RateLimitBar.app` を `/Applications` にコピーしてください。
+
+- Apple Silicon（Mシリーズ）: `RateLimitBar-v<version>-macOS-arm64.zip`
+- Intel Mac: `RateLimitBar-v<version>-macOS-amd64.zip`
+
+リリース版はmacOS 14以降を対象にビルドしています。Go・Xcodeは不要ですが、利用するサービスの認証済みCLIまたはローカル認証情報が必要です。
+
+開発者向けの未署名・未公証の配布です。macOSに起動を止められた場合は、一度起動を試した後に「システム設定 → プライバシーとセキュリティ」から許可してください。
+
 ### 必要な環境
 
 - macOS
@@ -146,6 +157,19 @@ internal/provider/ 各サービスの使用率取得
 internal/usage/    使用率データの型
 packaging/macos/   macOS アプリのアイコン・起動スクリプト・Info.plist
 ```
+
+### リリース
+
+Release workflowを含む変更を `main` にマージし、リリース対象のコミットに `v<major>.<minor>.<patch>` 形式のタグを付けてpushします。初回は `v0.1.0` です。
+
+```sh
+git switch main
+git pull --ff-only origin main
+git tag -a v0.1.0 -m 'Release v0.1.0'
+git push origin v0.1.0
+```
+
+GitHub ActionsがApple Silicon・Intelそれぞれで整形チェック、テスト、アプリのビルドを行い、両方が成功したらZIPと `SHA256SUMS.txt` を添付したGitHub Releaseを公開します。アプリのバージョンにはタグの値を設定します。署名用のSecretは不要です。
 
 ## フィードバック・コントリビューション
 
