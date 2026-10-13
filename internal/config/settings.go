@@ -6,11 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"ratelimitbar/internal/i18n"
 )
 
 type Settings struct {
-	CodexPath  string `json:"codexPath,omitempty"`
-	ClaudePath string `json:"claudePath,omitempty"`
+	Language   i18n.Language `json:"language,omitempty"`
+	CodexPath  string        `json:"codexPath,omitempty"`
+	ClaudePath string        `json:"claudePath,omitempty"`
 }
 
 type Store struct {

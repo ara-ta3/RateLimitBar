@@ -13,7 +13,7 @@ import (
 
 func TestFormatResultGuidesUserToCLISettingsWhenExecutableIsUnavailable(t *testing.T) {
 	got := menubar.FormatResult(usage.Result{Provider: "Codex", Err: provider.ErrExecutableUnavailable})
-	if got != "Codex: CLIが見つかりません（取得元の設定…）" {
+	if got != "Codex: CLI not found (CLI source settings…)" {
 		t.Fatalf("FormatResult() = %q", got)
 	}
 }

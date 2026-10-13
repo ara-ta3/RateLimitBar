@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/systray"
 
+	"ratelimitbar/internal/i18n"
 	"ratelimitbar/internal/usage"
 )
 
@@ -17,7 +18,7 @@ const loadingTitle = "Loading..."
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), actions []Action, options ...Option) error {
+func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), actions []Action, language LanguageSettings, options ...Option) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -27,21 +28,25 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		title := NewTitleState(systrayTitle{}, sel)
 		title.Redraw()
 		setters := make([]TitleSetter, len(sources))
+		localized := &localizedMenu{language: language, items: setters}
 		for i, src := range sources {
 			item := systray.AddMenuItem(src.Name+": "+loadingTitle, "")
 			item.Disable()
 			setters[i] = item
+			localized.text(item, src.Name+": Loading...", src.Name+": 読み込み中…")
 		}
 		systray.AddSeparator()
 		for _, src := range sources {
 			for _, label := range src.Windows {
 				item := systray.AddMenuItemCheckbox(src.Name+" "+label, "", true)
+				localized.window(item, src.Name, label)
 				go toggleOnClick(ctx, item, sel, src.Name, label, title)
 			}
 		}
 		systray.AddSeparator()
 		for _, option := range options {
 			item := systray.AddMenuItemCheckbox(option.Title, "", false)
+			localized.text(item, option.EnglishTitle, option.Title)
 			go toggleOptionOnClick(ctx, item.ClickedCh, item, option.OnChange)
 		}
 		if len(options) > 0 {
@@ -49,32 +54,40 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		}
 		triggers := make(chan struct{}, 1)
 		triggers <- struct{}{}
-		actionItems := make([]TitleSetter, len(actions))
+
 		var settingsMenu *systray.MenuItem
 		if len(actions) > 0 {
-			settingsMenu = systray.AddMenuItem("取得元の設定", "")
+			settingsMenu = systray.AddMenuItem("", "")
+			localized.text(settingsMenu, "CLI source settings", "取得元の設定")
 		}
-		for i, action := range actions {
+		for _, action := range actions {
 			item := settingsMenu.AddSubMenuItem(action.Title(), "")
-			actionItems[i] = item
-			go runActionOnClick(ctx, item.ClickedCh, action.OnClick, triggers)
+			localized.bind(func(i18n.Language) { item.SetTitle(action.Title()) })
+			go runActionOnClick(ctx, item.ClickedCh, func(ctx context.Context) bool {
+				changed := action.OnClick(ctx)
+				if changed {
+					localized.redraw()
+				}
+				return changed
+			}, triggers)
 		}
 		if len(actions) > 0 {
 			systray.AddSeparator()
 		}
-		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title})
+		localized.addLanguageMenu(ctx)
+		systray.AddSeparator()
+		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title, localized: localized})
 		refresh := systray.AddMenuItem("Refresh", "")
 		quit := systray.AddMenuItem("Quit", "")
+		localized.text(refresh, "Refresh", "更新")
+		localized.text(quit, "Quit", "終了")
 
 		fetchWithDynamicItems := func(ctx context.Context) ([]usage.Result, error) {
 			results, err := fetch(ctx)
-			for i, action := range actions {
-				actionItems[i].SetTitle(action.Title())
-			}
 			dynamicItems.Apply(results)
 			return results, err
 		}
-		go refreshWorker(ctx, triggers, fetchWithDynamicItems, setters, title, onFetchError, fatal)
+		go refreshWorker(ctx, triggers, fetchWithDynamicItems, setters, title, onFetchError, fatal, localized.update)
 		go dispatchEvents(ctx, refresh.ClickedCh, quit.ClickedCh, triggers)
 		go periodicTrigger(ctx, refreshInterval, triggers)
 	}, cancel)
@@ -89,13 +102,15 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 
 // systrayCheckboxAdder は、メニュー末尾へチェック項目を追加し、クリックで選択を切り替える。
 type systrayCheckboxAdder struct {
-	ctx   context.Context
-	sel   *Selection
-	title *TitleState
+	ctx       context.Context
+	sel       *Selection
+	title     *TitleState
+	localized *localizedMenu
 }
 
 func (a systrayCheckboxAdder) AddCheckbox(provider, label string) {
 	item := systray.AddMenuItemCheckbox(provider+" "+label, "", true)
+	a.localized.window(item, provider, label)
 	go toggleOnClick(a.ctx, item, a.sel, provider, label, a.title)
 }
 
@@ -120,14 +135,14 @@ func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, 
 	}
 }
 
-func refreshWorker(ctx context.Context, triggers <-chan struct{}, fetch Fetch, items []TitleSetter, title *TitleState, onFetchError func(error), fatal chan<- error) {
+func refreshWorker(ctx context.Context, triggers <-chan struct{}, fetch Fetch, items []TitleSetter, title *TitleState, onFetchError func(error), fatal chan<- error, renderers ...func([]usage.Result)) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-triggers:
 		}
-		err := ApplyRefresh(ctx, fetch, items, title)
+		err := ApplyRefresh(ctx, fetch, items, title, renderers...)
 		if errors.Is(err, ErrResultCountMismatch) {
 			fatal <- err
 			systray.Quit()

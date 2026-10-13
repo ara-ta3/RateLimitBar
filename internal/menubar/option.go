@@ -3,8 +3,9 @@ package menubar
 import "context"
 
 type Option struct {
-	Title    string
-	OnChange func(bool)
+	Title        string
+	EnglishTitle string
+	OnChange     func(bool)
 }
 
 type checkbox interface {
