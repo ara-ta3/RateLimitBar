@@ -38,7 +38,7 @@ func run() error {
 	}
 	settings, err := config.NewStore(filepath.Join(configDir, "RateLimitBar", "settings.json"))
 	if err != nil {
-		reportSettingError(ctx, fmt.Errorf("設定を読み込めませんでした。取得元を再指定してください: %w", err))
+		reportSettingError(ctx, settings.Settings().Language, fmt.Errorf("%s: %w", settings.Settings().Language.Text("Could not load settings. Select your CLI sources again", "設定を読み込めませんでした。取得元を再指定してください"), err))
 	}
 	registrations := provider.DefaultRegistrations(provider.Config{
 		AutoRefreshClaude: autoRefreshClaude.Load,
@@ -56,5 +56,5 @@ func run() error {
 	}
 	return menubar.Run(ctx, sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
-	}, sourceActions(settings), menubar.Option{Title: "Claudeのキャッシュを自動更新", OnChange: autoRefreshClaude.Store})
+	}, sourceActions(settings), languageSettings(settings), menubar.Option{Title: "Claudeのキャッシュを自動更新", EnglishTitle: "Automatically refresh Claude cache", OnChange: autoRefreshClaude.Store})
 }

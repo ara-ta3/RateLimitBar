@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"ratelimitbar/internal/i18n"
 	"ratelimitbar/internal/provider"
 	"ratelimitbar/internal/usage"
 )
@@ -21,19 +22,23 @@ func FormatResult(r usage.Result) string {
 }
 
 func formatResultAt(r usage.Result, now time.Time) string {
+	return formatLocalizedResultAt(r, now, i18n.English)
+}
+
+func formatLocalizedResultAt(r usage.Result, now time.Time, language i18n.Language) string {
 	if r.Err != nil {
 		if errors.Is(r.Err, provider.ErrExecutableUnavailable) {
-			return fmt.Sprintf("%s: CLIが見つかりません（取得元の設定…）", r.Provider)
+			return r.Provider + ": " + language.Text("CLI not found (CLI source settings…)", "CLIが見つかりません（取得元の設定…）")
 		}
-		return fmt.Sprintf("%s: %s", r.Provider, failedToFetch)
+		return fmt.Sprintf("%s: %s", r.Provider, language.Text(failedToFetch, "取得に失敗しました"))
 	}
 	windows := make([]string, len(r.Usage.Windows))
 	for i, w := range r.Usage.Windows {
-		windows[i] = formatWindow(w, w.Label, now)
+		windows[i] = formatWindow(w, windowLabel(language, w.Label), now)
 	}
 	text := fmt.Sprintf("%s: %s", r.Provider, strings.Join(windows, " / "))
 	if r.Usage.Stale {
-		text += staleSuffix
+		text += language.Text(staleSuffix, "（古いデータ）")
 	}
 	return text
 }

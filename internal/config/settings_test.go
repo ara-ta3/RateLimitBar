@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ratelimitbar/internal/config"
+	"ratelimitbar/internal/i18n"
 )
 
 func TestMissingSettingsUseAutomaticDiscovery(t *testing.T) {
@@ -109,5 +110,22 @@ func TestMalformedSettingsReportAnErrorAndAllowReselection(t *testing.T) {
 	}
 	if got != (config.Settings{CodexPath: "/cli/codex"}) {
 		t.Fatalf("Load() after reselection = %+v", got)
+	}
+}
+
+func TestFailedLanguageSaveKeepsCurrentLanguage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	store, err := config.NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(s *config.Settings) { s.Language = i18n.English }); err == nil {
+		t.Fatal("expected save error")
+	}
+	if store.Settings().Language != i18n.Japanese {
+		t.Fatal("language changed despite failed save")
 	}
 }

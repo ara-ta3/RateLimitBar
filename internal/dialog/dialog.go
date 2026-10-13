@@ -18,7 +18,7 @@ on error number -128
 end try
 end run`, prompt).Output()
 	if err != nil {
-		return "", fmt.Errorf("ファイル選択を開けませんでした: %w", err)
+		return "", fmt.Errorf("could not open file picker: %w", err)
 	}
 	return strings.TrimSuffix(string(output), "\n"), nil
 }

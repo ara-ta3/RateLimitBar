@@ -75,19 +75,24 @@ This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used 
 
 ## Usage
 
-Click the menu bar display to view usage details and settings. Some menu labels are currently in Japanese; the labels below match the app.
+Click the menu bar display to view usage details and settings. Use the Language menu to switch between English and Japanese.
 
 | Menu item | Action |
 | --- | --- |
 | Checkbox items for each service | Toggle individual usage windows in the menu bar |
 | `Refresh` | Fetch usage again |
-| 取得元の設定 (CLI source settings) | View or change the Codex and Claude CLI paths |
-| Claudeのキャッシュを自動更新 (Automatically refresh Claude cache) | Update stale cache data using the Claude CLI |
+| CLI source settings / 取得元の設定 | View or change the Codex and Claude CLI paths |
+| Automatically refresh Claude cache / Claudeのキャッシュを自動更新 | Update stale cache data using the Claude CLI |
 | `Quit` | Exit the app |
+| 言語 / Language | Switch between 日本語 and English; the selection is saved |
 
 All display items are enabled at startup. Display selections and the Claude automatic cache refresh toggle are not saved between launches.
 
 Countdowns update when usage is fetched. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows `RateLimit`.
+
+### Display language
+
+Select **言語 → English** or **Language → 日本語** to switch the menu, usage status, and file selection prompts immediately. The default is Japanese. Your selection is saved in `settings.json` and restored on the next launch. Service names and compact time units (`5h`, `1h30m`) stay the same.
 
 ### Configure CLI paths
 
@@ -95,8 +100,8 @@ By default, the app looks for `codex` and `claude` on its `PATH`. When launched 
 
 If a CLI cannot be found, or you want to use a specific executable:
 
-1. Open 取得元の設定 (CLI source settings).
-2. Click 未検出（指定…） (Not found — choose…) or the displayed CLI path.
+1. Open CLI source settings / 取得元の設定.
+2. Click Not found (Select…) or the displayed CLI path.
 3. Select the executable. Press `⌘⇧G` in the file picker to enter a path directly.
 
 Find CLI paths in your terminal:
@@ -108,7 +113,7 @@ command -v claude
 
 Selected paths are saved in `~/Library/Application Support/RateLimitBar/settings.json` and reused on subsequent launches. Selecting a path also triggers a refresh.
 
-If a selected executable is deleted, the app shows 未検出 (Not found). Select another executable, or choose 取得元の指定をすべて解除（自動検出に戻す） (Clear all selected paths — return to automatic detection) to resume searching `PATH`.
+If a selected executable is deleted, the app shows Not found. Select another executable, or choose Clear CLI paths (use automatic detection) to resume searching `PATH`.
 
 The Claude CLI is used only for automatic cache refresh; it is not required to display the existing cache. Cursor uses Keychain and its API, so it has no CLI path setting.
 
@@ -130,7 +135,7 @@ claude -p '/usage'
 
 | Symptom | What to check |
 | --- | --- |
-| CLI not found | Select the executable under 取得元の設定 (CLI source settings). A `PATH` configured only in `~/.zshrc` is not loaded when launching from Finder |
+| CLI not found | Select the executable under CLI source settings / 取得元の設定. A `PATH` configured only in `~/.zshrc` is not loaded when launching from Finder |
 | Claude shows `(stale)` | The cache is older than 15 minutes. Update it through Claude Code or enable automatic cache refresh |
 | `Failed to fetch` | Check the service's authentication and data source, then select `Refresh`. Cursor requires Keychain credentials and access to its usage API |
 
