@@ -202,6 +202,8 @@ void rlb_panel_toggle(void) {
         [panel.popover close];
     } else if (anchor && panel.model) {
         [panel.popover showRelativeToRect:anchor.bounds ofView:anchor preferredEdge:NSRectEdgeMinY];
+        [panel.popover.contentViewController.view.window makeKeyWindow];
+        [NSApp activateIgnoringOtherApps:YES];
         rlbPanelEvent("open");
     }
 }
