@@ -26,6 +26,12 @@ func TestCLISettingsDisplayDiscoveredPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	actions := sourceActions(store)
+	if actions[0].Label != "Codex CLI" || actions[0].Detail() != codexPath {
+		t.Fatalf("Codex settings = %q, %q", actions[0].Label, actions[0].Detail())
+	}
+	if actions[1].Label != "Claude CLI" || actions[1].Detail() != claudePath {
+		t.Fatalf("Claude settings = %q, %q", actions[1].Label, actions[1].Detail())
+	}
 	if got := actions[0].Title(); got != "Codex CLI: "+codexPath+"（変更…）" {
 		t.Fatalf("Codex title = %q", got)
 	}
@@ -41,6 +47,9 @@ func TestCLISettingsDisplaySelectedPathAndReportMissingCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	actions := sourceActions(store)
+	if actions[0].Detail() != "未検出" {
+		t.Fatalf("Codex settings detail = %q", actions[0].Detail())
+	}
 	if got := actions[0].Title(); got != "Codex CLI: 未検出（指定…）" {
 		t.Fatalf("Codex title = %q", got)
 	}

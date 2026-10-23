@@ -23,6 +23,14 @@ func reportSettingError(ctx context.Context, language i18n.Language, err error) 
 
 func cliAction(store *config.Store, name, command string, current func(config.Settings) string, change func(*config.Settings, string)) menubar.Action {
 	return menubar.Action{
+		Label: name + " CLI",
+		Detail: func() string {
+			path, err := provider.ResolveExecutable(command, current(store.Settings()))
+			if err != nil {
+				return store.Settings().Language.Text("Not found", "未検出")
+			}
+			return string(path)
+		},
 		Title: func() string {
 			path, err := provider.ResolveExecutable(command, current(store.Settings()))
 			if err != nil {

@@ -4,6 +4,8 @@ import "context"
 
 type Action struct {
 	Title   func() string
+	Label   string
+	Detail  func() string
 	OnClick func(context.Context) bool
 }
 

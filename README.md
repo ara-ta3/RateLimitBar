@@ -75,7 +75,7 @@ This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used 
 
 ## Usage
 
-Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to toggle its menu bar display. The panel’s Settings menu provides CLI source settings, automatic cache refresh, and language selection. Right-click to open the traditional menu.
+Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to toggle its menu bar display. The panel’s Settings… button opens a separate window for language selection, automatic cache refresh, and CLI sources. Clicking outside keeps the settings window open; selecting Settings… again brings the same window to the front. Right-click to open the traditional menu.
 
 | Menu item | Action |
 | --- | --- |

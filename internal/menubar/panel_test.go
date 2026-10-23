@@ -160,3 +160,56 @@ func TestPanelOpeningRedrawsCountdownWithoutFetching(t *testing.T) {
 		t.Fatal("dispatcher did not stop after cancellation")
 	}
 }
+
+func TestPanelBuildsTypedSettingsControls(t *testing.T) {
+	panel := newUsagePanel(nil, NewSelection(nil))
+	panel.command(func(language i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.ToggleCommand, Title: language.Text("Refresh cache", "キャッシュを更新"), Checked: true}
+	}, make(chan struct{}))
+	panel.command(func(i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.SourceCommand, Title: "Codex CLI: /tmp/codex（変更…）", Label: "Codex CLI", Detail: "/tmp/codex"}
+	}, make(chan struct{}))
+	panel.command(func(language i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.LanguageCommand, Title: "日本語", Checked: language == i18n.Japanese}
+	}, make(chan struct{}))
+
+	actual := panel.model(i18n.Japanese, nil, time.Time{})
+
+	expected := []popover.Command{
+		{Kind: popover.ToggleCommand, Title: "キャッシュを更新", Checked: true, Action: "0"},
+		{Kind: popover.SourceCommand, Title: "Codex CLI: /tmp/codex（変更…）", Label: "Codex CLI", Detail: "/tmp/codex", Action: "1"},
+		{Kind: popover.LanguageCommand, Title: "日本語", Checked: true, Action: "2"},
+	}
+	if !reflect.DeepEqual(actual.Commands, expected) {
+		t.Fatalf("commands = %#v, want %#v", actual.Commands, expected)
+	}
+	if actual.Settings != "設定…" || actual.SettingsTitle != "RateLimitBarの設定" || actual.GeneralTitle != "一般" || actual.SourcesTitle != "CLIの取得元" || actual.LanguageLabel != "言語" || actual.ChangeSource != "選択…" {
+		t.Fatalf("Japanese settings labels = %#v", actual)
+	}
+}
+
+func TestPanelSettingsReflectCurrentSourceAndLanguage(t *testing.T) {
+	panel := newUsagePanel(nil, NewSelection(nil))
+	path := "/tmp/old/codex"
+	panel.command(func(i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.SourceCommand, Label: "Codex CLI", Detail: path}
+	}, make(chan struct{}))
+	panel.command(func(language i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.LanguageCommand, Title: "English", Checked: language == i18n.English}
+	}, make(chan struct{}))
+	panel.model(i18n.Japanese, nil, time.Time{})
+	path = "/tmp/new/codex"
+
+	actual := panel.model(i18n.English, nil, time.Time{})
+
+	expected := []popover.Command{
+		{Kind: popover.SourceCommand, Label: "Codex CLI", Detail: "/tmp/new/codex", Action: "0"},
+		{Kind: popover.LanguageCommand, Title: "English", Checked: true, Action: "1"},
+	}
+	if !reflect.DeepEqual(actual.Commands, expected) {
+		t.Fatalf("commands = %#v, want %#v", actual.Commands, expected)
+	}
+	if actual.Settings != "Settings…" || actual.SettingsTitle != "RateLimitBar Settings" || actual.GeneralTitle != "General" || actual.SourcesTitle != "CLI sources" || actual.LanguageLabel != "Language" || actual.ChangeSource != "Choose…" {
+		t.Fatalf("English settings labels = %#v", actual)
+	}
+}

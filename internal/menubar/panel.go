@@ -42,12 +42,14 @@ func (p *usagePanel) window(provider, label string, clicked chan<- struct{}) {
 	p.windows[windowKey{provider, label}] = id
 }
 
-func (p *usagePanel) command(title func(i18n.Language) string, checked func(i18n.Language) bool, clicked chan<- struct{}) {
+func (p *usagePanel) command(render func(i18n.Language) popover.Command, clicked chan<- struct{}) {
 	id := p.bind(clicked)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.commands = append(p.commands, func(language i18n.Language) popover.Command {
-		return popover.Command{Title: title(language), Action: id, Checked: checked != nil && checked(language)}
+		command := render(language)
+		command.Action = id
+		return command
 	})
 }
 
@@ -59,9 +61,14 @@ func (p *usagePanel) model(language i18n.Language, results []usage.Result, now t
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	model := popover.Model{
-		Settings: language.Text("Settings", "設定"),
-		Refresh:  popover.Command{Title: language.Text("Refresh", "更新"), Action: p.refresh},
-		Quit:     popover.Command{Title: language.Text("Quit", "終了"), Action: p.quit},
+		Settings:      language.Text("Settings…", "設定…"),
+		SettingsTitle: language.Text("RateLimitBar Settings", "RateLimitBarの設定"),
+		GeneralTitle:  language.Text("General", "一般"),
+		SourcesTitle:  language.Text("CLI sources", "CLIの取得元"),
+		LanguageLabel: language.Text("Language", "言語"),
+		ChangeSource:  language.Text("Choose…", "選択…"),
+		Refresh:       popover.Command{Title: language.Text("Refresh", "更新"), Action: p.refresh},
+		Quit:          popover.Command{Title: language.Text("Quit", "終了"), Action: p.quit},
 	}
 	for _, source := range p.sources {
 		entry := popover.Provider{Name: source.Name, Message: language.Text("Loading…", "読み込み中…")}

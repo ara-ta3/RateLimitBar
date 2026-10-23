@@ -57,7 +57,9 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			localized.text(item, option.EnglishTitle, option.Title)
 			var enabled atomic.Bool
 			if localized.panel != nil {
-				localized.panel.command(func(l i18n.Language) string { return l.Text(option.EnglishTitle, option.Title) }, func(i18n.Language) bool { return enabled.Load() }, item.ClickedCh)
+				localized.panel.command(func(l i18n.Language) popover.Command {
+					return popover.Command{Kind: popover.ToggleCommand, Title: l.Text(option.EnglishTitle, option.Title), Checked: enabled.Load()}
+				}, item.ClickedCh)
 			}
 			go toggleOptionOnClick(ctx, item.ClickedCh, item, func(value bool) {
 				option.OnChange(value)
@@ -80,7 +82,13 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			item := settingsMenu.AddSubMenuItem(action.Title(), "")
 			localized.bind(func(i18n.Language) { item.SetTitle(action.Title()) })
 			if localized.panel != nil {
-				localized.panel.command(func(i18n.Language) string { return action.Title() }, nil, item.ClickedCh)
+				localized.panel.command(func(i18n.Language) popover.Command {
+					detail := ""
+					if action.Detail != nil {
+						detail = action.Detail()
+					}
+					return popover.Command{Kind: popover.SourceCommand, Title: action.Title(), Label: action.Label, Detail: detail}
+				}, item.ClickedCh)
 			}
 			go runActionOnClick(ctx, item.ClickedCh, func(ctx context.Context) bool {
 				changed := action.OnClick(ctx)
@@ -96,6 +104,14 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		localized.addLanguageMenu(ctx)
 		systray.AddSeparator()
 		dynamicItems := NewDynamicItems(sel, systrayCheckboxAdder{ctx: ctx, sel: sel, title: title, localized: localized})
+		if localized.panel != nil {
+			settings := systray.AddMenuItem("", "")
+			localized.text(settings, "Settings…", "設定…")
+			go runActionOnClick(ctx, settings.ClickedCh, func(context.Context) bool {
+				popover.ShowSettings()
+				return false
+			}, triggers)
+		}
 		refresh := systray.AddMenuItem("Refresh", "")
 		quit := systray.AddMenuItem("Quit", "")
 		localized.text(refresh, "Refresh", "更新")

@@ -7,6 +7,7 @@ package popover
 void rlb_panel_update(const char *json);
 void rlb_panel_toggle(void);
 void rlb_panel_close(void);
+void rlb_settings_show(void);
 */
 import "C"
 
@@ -29,8 +30,9 @@ func Update(model Model) {
 	C.rlb_panel_update(text)
 }
 
-func Toggle() { C.rlb_panel_toggle() }
-func Close()  { C.rlb_panel_close() }
+func Toggle()       { C.rlb_panel_toggle() }
+func Close()        { C.rlb_panel_close() }
+func ShowSettings() { C.rlb_settings_show() }
 
 //export rlbPanelEvent
 func rlbPanelEvent(action *C.char) {

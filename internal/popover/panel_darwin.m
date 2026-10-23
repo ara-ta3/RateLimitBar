@@ -1,4 +1,5 @@
 #import <Cocoa/Cocoa.h>
+#import "settings_darwin.h"
 
 extern void rlbPanelEvent(char *action);
 
@@ -52,6 +53,7 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 @property NSDictionary *model;
 @property NSScrollView *scroll;
 @property NSView *footer;
+@property RLBSettingsController *settings;
 - (void)render;
 - (void)performAction:(id)sender;
 - (void)showSettings:(NSButton *)sender;
@@ -60,6 +62,7 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 @implementation RLBPanelController
 - (instancetype)init {
     if ((self = [super init])) {
+        _settings = [RLBSettingsController new];
         _popover = [NSPopover new];
         _popover.behavior = NSPopoverBehaviorTransient;
         _popover.animates = YES;
@@ -86,6 +89,7 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 }
 
 - (void)render {
+    [self.settings updateModel:self.model];
     NSPoint scrollPosition = self.scroll.contentView.bounds.origin;
     RLBFlippedView *document = [[RLBFlippedView alloc] initWithFrame:NSZeroRect];
     CGFloat y = 14;
@@ -157,6 +161,8 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
     [self.footer addSubview:separator];
     NSButton *settings = [NSButton buttonWithTitle:self.model[@"settings"] target:self action:@selector(showSettings:)];
     settings.bezelStyle = NSBezelStyleRounded;
+    settings.keyEquivalent = @",";
+    settings.keyEquivalentModifierMask = NSEventModifierFlagCommand;
     settings.frame = NSMakeRect(12, 12, 100, 28);
     [self.footer addSubview:settings];
     [self.footer addSubview:[self button:self.model[@"refresh"] frame:NSMakeRect(130, 12, 100, 28)]];
@@ -170,22 +176,10 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 }
 
 - (void)showSettings:(NSButton *)sender {
-    NSMenu *menu = [NSMenu new];
-    menu.autoenablesItems = NO;
-    for (NSDictionary *command in self.model[@"commands"]) {
-        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:command[@"title"] action:@selector(settingAction:) keyEquivalent:@""];
-        item.target = self;
-        item.identifier = command[@"action"];
-        item.state = [command[@"checked"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
-        [menu addItem:item];
-    }
-    [menu popUpMenuPositioningItem:nil atLocation:NSMakePoint(0, sender.bounds.size.height + 4) inView:sender];
+    [self.popover close];
+    [self.settings showWindow:sender];
 }
 
-- (void)settingAction:(NSMenuItem *)sender {
-    [self.popover close];
-    [self performAction:sender];
-}
 @end
 
 static RLBPanelController *panel;
@@ -224,5 +218,12 @@ void rlb_panel_toggle(void) {
 }
 
 void rlb_panel_close(void) {
-    dispatch_async(dispatch_get_main_queue(), ^{ [panel.popover close]; });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [panel.popover close];
+        [panel.settings close];
+    });
+}
+
+void rlb_settings_show(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{ [panel showSettings:nil]; });
 }
