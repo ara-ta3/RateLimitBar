@@ -3,11 +3,13 @@ package menubar
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/systray"
 
 	"ratelimitbar/internal/i18n"
+	"ratelimitbar/internal/popover"
 	"ratelimitbar/internal/usage"
 )
 
@@ -29,6 +31,9 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		title.Redraw()
 		setters := make([]TitleSetter, len(sources))
 		localized := &localizedMenu{language: language, items: setters}
+		if popover.Available {
+			localized.panel = newUsagePanel(sources, sel)
+		}
 		for i, src := range sources {
 			item := systray.AddMenuItem(src.Name+": "+loadingTitle, "")
 			item.Disable()
@@ -40,14 +45,25 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			for _, label := range src.Windows {
 				item := systray.AddMenuItemCheckbox(src.Name+" "+label, "", true)
 				localized.window(item, src.Name, label)
-				go toggleOnClick(ctx, item, sel, src.Name, label, title)
+				if localized.panel != nil {
+					localized.panel.window(src.Name, label, item.ClickedCh)
+				}
+				go toggleOnClick(ctx, item, sel, src.Name, label, title, localized.redraw)
 			}
 		}
 		systray.AddSeparator()
 		for _, option := range options {
 			item := systray.AddMenuItemCheckbox(option.Title, "", false)
 			localized.text(item, option.EnglishTitle, option.Title)
-			go toggleOptionOnClick(ctx, item.ClickedCh, item, option.OnChange)
+			var enabled atomic.Bool
+			if localized.panel != nil {
+				localized.panel.command(func(l i18n.Language) string { return l.Text(option.EnglishTitle, option.Title) }, func(i18n.Language) bool { return enabled.Load() }, item.ClickedCh)
+			}
+			go toggleOptionOnClick(ctx, item.ClickedCh, item, func(value bool) {
+				option.OnChange(value)
+				enabled.Store(value)
+				localized.redraw()
+			})
 		}
 		if len(options) > 0 {
 			systray.AddSeparator()
@@ -63,6 +79,9 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		for _, action := range actions {
 			item := settingsMenu.AddSubMenuItem(action.Title(), "")
 			localized.bind(func(i18n.Language) { item.SetTitle(action.Title()) })
+			if localized.panel != nil {
+				localized.panel.command(func(i18n.Language) string { return action.Title() }, nil, item.ClickedCh)
+			}
 			go runActionOnClick(ctx, item.ClickedCh, func(ctx context.Context) bool {
 				changed := action.OnClick(ctx)
 				if changed {
@@ -81,6 +100,13 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		quit := systray.AddMenuItem("Quit", "")
 		localized.text(refresh, "Refresh", "更新")
 		localized.text(quit, "Quit", "終了")
+		if localized.panel != nil {
+			localized.panel.refresh = localized.panel.bind(refresh.ClickedCh)
+			localized.panel.quit = localized.panel.bind(quit.ClickedCh)
+			localized.redraw()
+			systray.SetOnTapped(popover.Toggle)
+			go localized.panel.dispatch(ctx, popover.Events, localized.redraw)
+		}
 
 		fetchWithDynamicItems := func(ctx context.Context) ([]usage.Result, error) {
 			results, err := fetch(ctx)
@@ -111,7 +137,10 @@ type systrayCheckboxAdder struct {
 func (a systrayCheckboxAdder) AddCheckbox(provider, label string) {
 	item := systray.AddMenuItemCheckbox(provider+" "+label, "", true)
 	a.localized.window(item, provider, label)
-	go toggleOnClick(a.ctx, item, a.sel, provider, label, a.title)
+	if a.localized.panel != nil {
+		a.localized.panel.window(provider, label, item.ClickedCh)
+	}
+	go toggleOnClick(a.ctx, item, a.sel, provider, label, a.title, a.localized.redraw)
 }
 
 type systrayTitle struct{}
@@ -119,7 +148,7 @@ type systrayTitle struct{}
 func (systrayTitle) SetTitle(title string) { systray.SetTitle(title) }
 
 // toggleOnClick は項目のクリックごとに選択を切り替え、チェック表示とタイトルを追従させる。
-func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, provider, label string, title *TitleState) {
+func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, provider, label string, title *TitleState, redraw func()) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -131,6 +160,7 @@ func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, 
 				item.Uncheck()
 			}
 			title.Redraw()
+			redraw()
 		}
 	}
 }

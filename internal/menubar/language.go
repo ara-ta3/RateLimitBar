@@ -22,6 +22,7 @@ type localizedMenu struct {
 	redraws  []func(i18n.Language)
 	results  []usage.Result
 	items    []TitleSetter
+	panel    *usagePanel
 }
 
 func (m *localizedMenu) bind(redraw func(i18n.Language)) {
@@ -49,6 +50,9 @@ func (m *localizedMenu) redrawLocked() {
 	for _, redraw := range m.redraws {
 		redraw(language)
 	}
+	if m.panel != nil {
+		m.panel.update(language, m.results)
+	}
 	if len(m.results) != len(m.items) {
 		return
 	}
@@ -73,6 +77,10 @@ func (m *localizedMenu) addLanguageMenu(ctx context.Context) {
 	m.text(menu, "Language", "言語")
 	english := menu.AddSubMenuItemCheckbox("English", "", false)
 	japanese := menu.AddSubMenuItemCheckbox("日本語", "", false)
+	if m.panel != nil {
+		m.panel.command(func(i18n.Language) string { return "English" }, func(l i18n.Language) bool { return l == i18n.English }, english.ClickedCh)
+		m.panel.command(func(i18n.Language) string { return "日本語" }, func(l i18n.Language) bool { return l == i18n.Japanese }, japanese.ClickedCh)
+	}
 	m.bind(func(language i18n.Language) {
 		if language == i18n.English {
 			english.Check()

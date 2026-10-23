@@ -75,7 +75,7 @@ This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used 
 
 ## Usage
 
-Click the menu bar display to view usage details and settings. Use the Language menu to switch between English and Japanese.
+Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to toggle its menu bar display. The panel’s Settings menu provides CLI source settings, automatic cache refresh, and language selection. Right-click to open the traditional menu.
 
 | Menu item | Action |
 | --- | --- |
@@ -88,7 +88,7 @@ Click the menu bar display to view usage details and settings. Use the Language 
 
 All display items are enabled at startup. Display selections and the Claude automatic cache refresh toggle are not saved between launches.
 
-Countdowns update when usage is fetched. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows `RateLimit`.
+Countdowns update when usage is fetched; the panel also updates its countdowns when opened. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows `RateLimit`.
 
 ### Display language
 
