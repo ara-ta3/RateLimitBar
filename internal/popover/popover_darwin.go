@@ -8,6 +8,7 @@ void rlb_panel_update(const char *json);
 void rlb_panel_toggle(void);
 void rlb_panel_close(void);
 void rlb_settings_show(void);
+void rlb_status_update(const char *json);
 */
 import "C"
 
@@ -40,4 +41,14 @@ func rlbPanelEvent(action *C.char) {
 	case Events <- C.GoString(action):
 	default:
 	}
+}
+
+func UpdateStatus(model Status) {
+	data, err := json.Marshal(model)
+	if err != nil {
+		panic(err)
+	}
+	text := C.CString(string(data))
+	defer C.free(unsafe.Pointer(text))
+	C.rlb_status_update(text)
 }

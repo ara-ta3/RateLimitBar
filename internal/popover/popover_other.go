@@ -11,3 +11,5 @@ func Toggle()      {}
 func Close()       {}
 
 func ShowSettings() {}
+
+func UpdateStatus(Status) {}

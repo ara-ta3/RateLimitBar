@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import "settings_darwin.h"
+#import "status_darwin.h"
 
 extern void rlbPanelEvent(char *action);
 
@@ -194,21 +195,9 @@ void rlb_panel_update(const char *json) {
     });
 }
 
-static NSView *RLBStatusButton(NSView *view) {
-    if ([view isKindOfClass:NSStatusBarButton.class]) return view;
-    for (NSView *child in view.subviews) {
-        NSView *button = RLBStatusButton(child);
-        if (button) return button;
-    }
-    return nil;
-}
 
 void rlb_panel_toggle(void) {
-    NSView *anchor = nil;
-    for (NSWindow *window in NSApp.windows) {
-        anchor = RLBStatusButton(window.contentView);
-        if (anchor) break;
-    }
+    NSView *anchor = RLBStatusButton();
     if (panel.popover.shown) {
         [panel.popover close];
     } else if (anchor && panel.model) {

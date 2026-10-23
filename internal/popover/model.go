@@ -46,3 +46,15 @@ type Command struct {
 	Action  string      `json:"action"`
 	Checked bool        `json:"checked"`
 }
+
+type Status struct {
+	Providers []StatusProvider `json:"providers"`
+	Tooltip   string           `json:"tooltip"`
+}
+
+type StatusProvider struct {
+	Label       string `json:"label"`
+	UsedPercent int    `json:"usedPercent"`
+	Unavailable bool   `json:"unavailable"`
+	Stale       bool   `json:"stale"`
+}

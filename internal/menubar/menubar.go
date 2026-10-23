@@ -27,10 +27,11 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 	fatal := make(chan error, 1)
 	systray.Run(func() {
 		sel := NewSelection(sources)
-		title := NewTitleState(systrayTitle{}, sel)
+		title := NewTitleState(systrayTitle{language: language}, sel)
 		title.Redraw()
 		setters := make([]TitleSetter, len(sources))
 		localized := &localizedMenu{language: language, items: setters}
+		localized.bind(func(i18n.Language) { title.Redraw() })
 		if popover.Available {
 			localized.panel = newUsagePanel(sources, sel)
 		}
@@ -159,9 +160,17 @@ func (a systrayCheckboxAdder) AddCheckbox(provider, label string) {
 	go toggleOnClick(a.ctx, item, a.sel, provider, label, a.title, a.localized.redraw)
 }
 
-type systrayTitle struct{}
+type systrayTitle struct{ language LanguageSettings }
 
 func (systrayTitle) SetTitle(title string) { systray.SetTitle(title) }
+
+func (t systrayTitle) SetUsage(results []usage.Result, sel *Selection) {
+	if popover.Available {
+		popover.UpdateStatus(statusModel(results, sel, t.language.Current()))
+		return
+	}
+	systray.SetTitle(FormatTitle(results, sel))
+}
 
 // toggleOnClick は項目のクリックごとに選択を切り替え、チェック表示とタイトルを追従させる。
 func toggleOnClick(ctx context.Context, item *systray.MenuItem, sel *Selection, provider, label string, title *TitleState, redraw func()) {
