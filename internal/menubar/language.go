@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/systray"
 	"ratelimitbar/internal/i18n"
+	"ratelimitbar/internal/popover"
 	"ratelimitbar/internal/provider"
 	"ratelimitbar/internal/usage"
 )
@@ -22,6 +23,7 @@ type localizedMenu struct {
 	redraws  []func(i18n.Language)
 	results  []usage.Result
 	items    []TitleSetter
+	panel    *usagePanel
 }
 
 func (m *localizedMenu) bind(redraw func(i18n.Language)) {
@@ -49,6 +51,9 @@ func (m *localizedMenu) redrawLocked() {
 	for _, redraw := range m.redraws {
 		redraw(language)
 	}
+	if m.panel != nil {
+		m.panel.update(language, m.results)
+	}
 	if len(m.results) != len(m.items) {
 		return
 	}
@@ -73,6 +78,14 @@ func (m *localizedMenu) addLanguageMenu(ctx context.Context) {
 	m.text(menu, "Language", "言語")
 	english := menu.AddSubMenuItemCheckbox("English", "", false)
 	japanese := menu.AddSubMenuItemCheckbox("日本語", "", false)
+	if m.panel != nil {
+		m.panel.command(func(l i18n.Language) popover.Command {
+			return popover.Command{Kind: popover.LanguageCommand, Title: "English", Checked: l == i18n.English}
+		}, english.ClickedCh)
+		m.panel.command(func(l i18n.Language) popover.Command {
+			return popover.Command{Kind: popover.LanguageCommand, Title: "日本語", Checked: l == i18n.Japanese}
+		}, japanese.ClickedCh)
+	}
 	m.bind(func(language i18n.Language) {
 		if language == i18n.English {
 			english.Check()
@@ -93,9 +106,8 @@ func (m *localizedMenu) addLanguageMenu(ctx context.Context) {
 			case <-japanese.ClickedCh:
 				language = i18n.Japanese
 			}
-			if m.language.Change(ctx, language) {
-				m.redraw()
-			}
+			m.language.Change(ctx, language)
+			m.redraw()
 		}
 	}()
 }

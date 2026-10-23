@@ -17,10 +17,10 @@
 RateLimitBar is a macOS menu bar app that displays usage percentages and the time remaining until rate limits reset for AI coding tools. It refreshes every 60 seconds and lets you choose which services and usage windows to display.
 
 ```text
-Claude 5h 23% (2h30m) / W 48% (3d4h)  Codex 5h 61% (1h20m)  Cursor M 18% (12d3h)
+Claude 5h ━╸─── Weekly ━━━╸─  Codex 5h ╸────  Cursor Monthly ━━━──
 ```
 
-*Example display. `W` means weekly and `M` means monthly. Percentages indicate usage consumed.*
+*Schematic menu bar display. Full service names and window labels identify each bar. Each checked window has its own bar: select the five-hour window, weekly window, both, or a model-specific window. Click to see exact percentages and reset countdowns.*
 
 ## Features
 
@@ -75,7 +75,7 @@ This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used 
 
 ## Usage
 
-Click the menu bar display to view usage details and settings. Use the Language menu to switch between English and Japanese.
+Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to show or hide its own bar in the menu bar. Fetching and panel updates continue when a window is unchecked. The panel’s Settings… button opens a separate window for language selection, automatic cache refresh, and CLI sources. Clicking outside keeps the settings window open; selecting Settings… again brings the same window to the front. Right-click to open the traditional menu.
 
 | Menu item | Action |
 | --- | --- |
@@ -88,7 +88,7 @@ Click the menu bar display to view usage details and settings. Use the Language 
 
 All display items are enabled at startup. Display selections and the Claude automatic cache refresh toggle are not saved between launches.
 
-Countdowns update when usage is fetched. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows `RateLimit`.
+Countdowns update when usage is fetched; the panel also updates its countdowns when opened. Less than one minute is shown as `<1m`, and a reset time in the past is shown as `0m`. Windows without a reset timestamp show only the usage percentage. Before the first fetch, or when all display items are disabled, the menu bar shows a chart icon. Failed or missing data is shown as a dash, while stale usage bars are gray. Hover to see percentages for the selected windows and their fetch status.
 
 ### Display language
 

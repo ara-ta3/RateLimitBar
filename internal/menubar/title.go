@@ -22,12 +22,22 @@ func (t *TitleState) update(results []usage.Result) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.results = results
-	t.title.SetTitle(FormatTitle(t.results, t.sel))
+	t.redrawLocked()
 }
 
 // Redraw は保持している最新の結果から、現在の選択でタイトルを作り直す。
 func (t *TitleState) Redraw() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.redrawLocked()
+}
+
+func (t *TitleState) redrawLocked() {
+	if visual, ok := t.title.(interface {
+		SetUsage([]usage.Result, *Selection)
+	}); ok {
+		visual.SetUsage(t.results, t.sel)
+		return
+	}
 	t.title.SetTitle(FormatTitle(t.results, t.sel))
 }
