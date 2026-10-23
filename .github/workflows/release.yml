@@ -86,6 +86,19 @@ jobs:
           cd dist
           sha256sum ./*.zip > SHA256SUMS.txt
           cat > release-notes.md <<'EOF'
+          ## English
+
+          This is an unsigned, unnotarized macOS app for developers, built for macOS 14 and later.
+
+          - Apple Silicon (M series): `macOS-arm64.zip`
+          - Intel Mac: `macOS-amd64.zip`
+
+          Extract the ZIP for your Mac's CPU and copy `RateLimitBar.app` to `/Applications`.
+          Go and Xcode are not required, but you need an authenticated CLI or local credentials for the services you use.
+          If macOS blocks the app, try opening it first, then allow it in System Settings → Privacy & Security.
+
+          ## 日本語
+
           開発者向けの未署名・未公証のmacOSアプリです。macOS 14以降を対象にビルドしています。
 
           - Apple Silicon（Mシリーズ）: `macOS-arm64.zip`
