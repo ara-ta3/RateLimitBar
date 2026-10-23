@@ -17,10 +17,10 @@
 RateLimitBar is a macOS menu bar app that displays usage percentages and the time remaining until rate limits reset for AI coding tools. It refreshes every 60 seconds and lets you choose which services and usage windows to display.
 
 ```text
-CL ━━╸──  CX ━━━──  CU ╸────
+Claude 5h ━╸─── Weekly ━━━╸─  Codex 5h ╸────  Cursor Monthly ━━━──
 ```
 
-*Schematic menu bar display. `CL` means Claude, `CX` means Codex, and `CU` means Cursor. Each bar represents the highest used percentage among the checked windows for that service. Click to see exact percentages and reset countdowns.*
+*Schematic menu bar display. Full service names and window labels identify each bar. Each checked window has its own bar: select the five-hour window, weekly window, both, or a model-specific window. Click to see exact percentages and reset countdowns.*
 
 ## Features
 
@@ -75,7 +75,7 @@ This generates `dist/RateLimitBar.app` for the CPU architecture of the Mac used 
 
 ## Usage
 
-Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to include or exclude it from the service’s representative bar. Fetching and panel updates continue when a window is unchecked. The panel’s Settings… button opens a separate window for language selection, automatic cache refresh, and CLI sources. Clicking outside keeps the settings window open; selecting Settings… again brings the same window to the front. Right-click to open the traditional menu.
+Click the menu bar display to open a panel with usage bars and reset countdowns for each service. Bars and colors represent the used percentage for every service: green below 70%, yellow from 70%, and red from 90%. Both used and remaining percentages are labeled explicitly. Check or uncheck a usage window to show or hide its own bar in the menu bar. Fetching and panel updates continue when a window is unchecked. The panel’s Settings… button opens a separate window for language selection, automatic cache refresh, and CLI sources. Clicking outside keeps the settings window open; selecting Settings… again brings the same window to the front. Right-click to open the traditional menu.
 
 | Menu item | Action |
 | --- | --- |

@@ -9,30 +9,23 @@ import (
 	"ratelimitbar/internal/usage"
 )
 
-var statusProviderLabels = map[string]string{
-	"Claude": "CL",
-	"Codex":  "CX",
-	"Cursor": "CU",
-}
-
 func statusModel(results []usage.Result, sel *Selection, language i18n.Language) popover.Status {
 	model := popover.Status{Tooltip: "RateLimitBar — " + language.Text("Used percentage", "使用済みの割合")}
 	for _, result := range results {
 		if !sel.anyEnabled(result.Provider) {
 			continue
 		}
-		label := statusProviderLabels[result.Provider]
-		if label == "" {
-			label = result.Provider
-		}
-		entry := popover.StatusProvider{Label: label, Stale: result.Usage.Stale}
+		entry := popover.StatusProvider{Label: result.Provider}
 		var selected []string
-		for _, window := range result.Usage.Windows {
-			if !sel.Enabled(result.Provider, window.Label) {
-				continue
+		if result.Err == nil {
+			for _, window := range result.Usage.Windows {
+				if !sel.Enabled(result.Provider, window.Label) {
+					continue
+				}
+				label := windowLabel(language, window.Label)
+				entry.Windows = append(entry.Windows, popover.StatusWindow{Label: label, UsedPercent: window.UsedPercent, Stale: result.Usage.Stale})
+				selected = append(selected, fmt.Sprintf("%s %d%%", label, window.UsedPercent))
 			}
-			entry.UsedPercent = max(entry.UsedPercent, window.UsedPercent)
-			selected = append(selected, fmt.Sprintf("%s %d%%", windowLabel(language, window.Label), window.UsedPercent))
 		}
 		switch {
 		case result.Err != nil:
@@ -43,7 +36,7 @@ func statusModel(results []usage.Result, sel *Selection, language i18n.Language)
 			model.Tooltip += "\n" + result.Provider + ": " + language.Text("No usage data", "使用率のデータがありません")
 		default:
 			model.Tooltip += "\n" + result.Provider + ": " + strings.Join(selected, " / ")
-			if entry.Stale {
+			if result.Usage.Stale {
 				model.Tooltip += language.Text(staleSuffix, "（古いデータ）")
 			}
 		}

@@ -11,7 +11,7 @@ import (
 	"ratelimitbar/internal/usage"
 )
 
-func TestStatusUsesHighestSelectedUsageForEachProvider(t *testing.T) {
+func TestStatusShowsEverySelectedWindowWithFullProviderNames(t *testing.T) {
 	selection := NewSelection([]Source{{Name: "Claude", Windows: []string{"5h", "Weekly"}}, {Name: "Codex", Windows: []string{"5h"}}})
 	results := []usage.Result{
 		{Provider: "Claude", Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 23}, {Label: "Weekly", UsedPercent: 78}}}},
@@ -21,22 +21,25 @@ func TestStatusUsesHighestSelectedUsageForEachProvider(t *testing.T) {
 	actual := statusModel(results, selection, i18n.Japanese)
 
 	expected := popover.Status{
-		Providers: []popover.StatusProvider{{Label: "CL", UsedPercent: 78}, {Label: "CX", UsedPercent: 18}},
-		Tooltip:   "RateLimitBar — 使用済みの割合\nClaude: 5h 23% / 週間 78%\nCodex: 5h 18%",
+		Providers: []popover.StatusProvider{
+			{Label: "Claude", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 23}, {Label: "週間", UsedPercent: 78}}},
+			{Label: "Codex", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 18}}},
+		},
+		Tooltip: "RateLimitBar — 使用済みの割合\nClaude: 5h 23% / 週間 78%\nCodex: 5h 18%",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("status = %#v, want %#v", actual, expected)
 	}
 }
 
-func TestStatusDoesNotIncludeDisabledWindowInRepresentativeUsage(t *testing.T) {
+func TestStatusShowsOnlyTheSelectedFiveHourWindow(t *testing.T) {
 	selection := NewSelection([]Source{{Name: "Codex", Windows: []string{"5h", "Weekly"}}})
 	selection.Toggle("Codex", "Weekly")
 
 	actual := statusModel([]usage.Result{{Provider: "Codex", Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 18}, {Label: "Weekly", UsedPercent: 94}}}}}, selection, i18n.English)
 
 	expected := popover.Status{
-		Providers: []popover.StatusProvider{{Label: "CX", UsedPercent: 18}},
+		Providers: []popover.StatusProvider{{Label: "Codex", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 18}}}},
 		Tooltip:   "RateLimitBar — Used percentage\nCodex: 5h 18%",
 	}
 	if !reflect.DeepEqual(actual, expected) {
@@ -50,7 +53,7 @@ func TestStatusDoesNotTreatFetchFailureAsZeroUsage(t *testing.T) {
 	actual := statusModel([]usage.Result{{Provider: "Cursor", Err: errors.New("private error")}}, selection, i18n.Japanese)
 
 	expected := popover.Status{
-		Providers: []popover.StatusProvider{{Label: "CU", Unavailable: true}},
+		Providers: []popover.StatusProvider{{Label: "Cursor", Unavailable: true}},
 		Tooltip:   "RateLimitBar — 使用済みの割合\nCursor: 取得に失敗しました",
 	}
 	if !reflect.DeepEqual(actual, expected) {
@@ -64,7 +67,7 @@ func TestStatusMarksStaleDataSeparatelyFromFreshUsage(t *testing.T) {
 	actual := statusModel([]usage.Result{{Provider: "Claude", Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: "5h", UsedPercent: 95}}}}}, selection, i18n.English)
 
 	expected := popover.Status{
-		Providers: []popover.StatusProvider{{Label: "CL", UsedPercent: 95, Stale: true}},
+		Providers: []popover.StatusProvider{{Label: "Claude", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 95, Stale: true}}}},
 		Tooltip:   "RateLimitBar — Used percentage\nClaude: 5h 95% (stale)",
 	}
 	if !reflect.DeepEqual(actual, expected) {
@@ -89,7 +92,7 @@ func TestStatusDistinguishesMissingDataFromMeasuredZero(t *testing.T) {
 	actual := statusModel([]usage.Result{{Provider: "Claude"}, {Provider: "Codex", Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 0}}}}}, selection, i18n.Japanese)
 
 	expected := popover.Status{
-		Providers: []popover.StatusProvider{{Label: "CL", Unavailable: true}, {Label: "CX", UsedPercent: 0}},
+		Providers: []popover.StatusProvider{{Label: "Claude", Unavailable: true}, {Label: "Codex", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 0}}}},
 		Tooltip:   "RateLimitBar — 使用済みの割合\nClaude: 使用率のデータがありません\nCodex: 5h 0%",
 	}
 	if !reflect.DeepEqual(actual, expected) {
@@ -119,14 +122,14 @@ func TestVisualTitleReflectsSelectionWithoutRefetching(t *testing.T) {
 	if err := ApplyRefresh(context.Background(), fetch, []TitleSetter{&localizedTestItem{}}, state); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(recorder.status.Providers, []popover.StatusProvider{{Label: "CX", UsedPercent: 94}}) {
+	if !reflect.DeepEqual(recorder.status.Providers, []popover.StatusProvider{{Label: "Codex", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 18}, {Label: "Weekly", UsedPercent: 94}}}}) {
 		t.Fatalf("status after fetch = %#v", recorder.status)
 	}
 
 	selection.Toggle("Codex", "Weekly")
 	state.Redraw()
 
-	if !reflect.DeepEqual(recorder.status.Providers, []popover.StatusProvider{{Label: "CX", UsedPercent: 18}}) {
+	if !reflect.DeepEqual(recorder.status.Providers, []popover.StatusProvider{{Label: "Codex", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 18}}}}) {
 		t.Fatalf("status after toggle = %#v", recorder.status)
 	}
 	if calls != 1 {
@@ -134,5 +137,37 @@ func TestVisualTitleReflectsSelectionWithoutRefetching(t *testing.T) {
 	}
 	if recorder.text != "" {
 		t.Fatalf("text title = %q, want the visual renderer only", recorder.text)
+	}
+}
+
+func TestStatusCanSelectWeeklyInsteadOfFiveHourWindow(t *testing.T) {
+	selection := NewSelection([]Source{{Name: "Codex", Windows: []string{"5h", "Weekly"}}})
+	selection.Toggle("Codex", "5h")
+
+	actual := statusModel([]usage.Result{{Provider: "Codex", Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 18}, {Label: "Weekly", UsedPercent: 94}}}}}, selection, i18n.Japanese)
+
+	expected := popover.Status{
+		Providers: []popover.StatusProvider{{Label: "Codex", Windows: []popover.StatusWindow{{Label: "週間", UsedPercent: 94}}}},
+		Tooltip:   "RateLimitBar — 使用済みの割合\nCodex: 週間 94%",
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("status = %#v, want %#v", actual, expected)
+	}
+}
+
+func TestStatusCanSelectAModelSpecificWindow(t *testing.T) {
+	selection := NewSelection([]Source{{Name: "Codex", Windows: []string{"5h", "Weekly"}}})
+	selection.declare("Codex", "Spark 5h")
+	selection.Toggle("Codex", "5h")
+	selection.Toggle("Codex", "Weekly")
+
+	actual := statusModel([]usage.Result{{Provider: "Codex", Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 18}, {Label: "Weekly", UsedPercent: 94}, {Label: "Spark 5h", UsedPercent: 30}}}}}, selection, i18n.English)
+
+	expected := popover.Status{
+		Providers: []popover.StatusProvider{{Label: "Codex", Windows: []popover.StatusWindow{{Label: "Spark 5h", UsedPercent: 30}}}},
+		Tooltip:   "RateLimitBar — Used percentage\nCodex: Spark 5h 30%",
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("status = %#v, want %#v", actual, expected)
 	}
 }

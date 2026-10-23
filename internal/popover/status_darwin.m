@@ -17,20 +17,20 @@ NSStatusBarButton *RLBStatusButton(void) {
     return nil;
 }
 
-static NSImage *RLBStatusBar(NSDictionary *provider) {
+static NSImage *RLBStatusBar(NSDictionary *state) {
     return [NSImage imageWithSize:NSMakeSize(22, 7) flipped:NO drawingHandler:^BOOL(NSRect bounds) {
         NSColor *muted = [NSColor colorWithWhite:0.5 alpha:0.5];
-        if ([provider[@"unavailable"] boolValue]) {
+        if ([state[@"unavailable"] boolValue]) {
             [muted setFill];
             NSRectFill(NSMakeRect(7, 3, 8, 1));
             return YES;
         }
         [[NSColor colorWithWhite:0.5 alpha:0.3] setFill];
         [[NSBezierPath bezierPathWithRoundedRect:bounds xRadius:2 yRadius:2] fill];
-        NSInteger used = [provider[@"usedPercent"] integerValue];
+        NSInteger used = [state[@"usedPercent"] integerValue];
         NSColor *color = used >= 90 ? NSColor.systemRedColor :
             (used >= 70 ? NSColor.systemYellowColor : NSColor.systemGreenColor);
-        if ([provider[@"stale"] boolValue]) color = muted;
+        if ([state[@"stale"] boolValue]) color = muted;
         [color setFill];
         NSRect fill = bounds;
         fill.size.width *= MIN(100, MAX(0, used)) / 100.0;
@@ -39,19 +39,37 @@ static NSImage *RLBStatusBar(NSDictionary *provider) {
     }];
 }
 
+static void RLBAppendStatusBar(NSMutableAttributedString *title, NSDictionary *state) {
+    NSTextAttachment *attachment = [NSTextAttachment new];
+    attachment.image = RLBStatusBar(state);
+    attachment.bounds = NSMakeRect(0, -1, 22, 7);
+    [title appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+}
+
 NSAttributedString *RLBStatusTitle(NSArray *providers) {
     NSMutableAttributedString *title = [NSMutableAttributedString new];
-    NSDictionary *attributes = @{
+    NSDictionary *providerAttributes = @{
         NSFontAttributeName: [NSFont systemFontOfSize:10 weight:NSFontWeightSemibold],
         NSForegroundColorAttributeName: NSColor.labelColor
     };
+    NSDictionary *windowAttributes = @{
+        NSFontAttributeName: [NSFont systemFontOfSize:9],
+        NSForegroundColorAttributeName: NSColor.secondaryLabelColor
+    };
     for (NSDictionary *provider in providers) {
-        if (title.length) [title appendAttributedString:[[NSAttributedString alloc] initWithString:@"  " attributes:attributes]];
-        [title appendAttributedString:[[NSAttributedString alloc] initWithString:[provider[@"label"] stringByAppendingString:@" "] attributes:attributes]];
-        NSTextAttachment *attachment = [NSTextAttachment new];
-        attachment.image = RLBStatusBar(provider);
-        attachment.bounds = NSMakeRect(0, -1, 22, 7);
-        [title appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+        if (title.length) [title appendAttributedString:[[NSAttributedString alloc] initWithString:@"  " attributes:providerAttributes]];
+        [title appendAttributedString:[[NSAttributedString alloc] initWithString:[provider[@"label"] stringByAppendingString:@" "] attributes:providerAttributes]];
+        if ([provider[@"unavailable"] boolValue]) {
+            RLBAppendStatusBar(title, provider);
+            continue;
+        }
+        BOOL first = YES;
+        for (NSDictionary *window in provider[@"windows"]) {
+            if (!first) [title appendAttributedString:[[NSAttributedString alloc] initWithString:@" " attributes:windowAttributes]];
+            first = NO;
+            [title appendAttributedString:[[NSAttributedString alloc] initWithString:[window[@"label"] stringByAppendingString:@" "] attributes:windowAttributes]];
+            RLBAppendStatusBar(title, window);
+        }
     }
     return title;
 }

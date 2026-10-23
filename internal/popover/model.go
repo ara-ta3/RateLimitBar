@@ -53,8 +53,13 @@ type Status struct {
 }
 
 type StatusProvider struct {
+	Label       string         `json:"label"`
+	Windows     []StatusWindow `json:"windows"`
+	Unavailable bool           `json:"unavailable"`
+}
+
+type StatusWindow struct {
 	Label       string `json:"label"`
 	UsedPercent int    `json:"usedPercent"`
-	Unavailable bool   `json:"unavailable"`
 	Stale       bool   `json:"stale"`
 }
