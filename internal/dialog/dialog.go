@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -24,8 +25,13 @@ end run`, prompt).Output()
 }
 
 func ShowError(ctx context.Context, err error) error {
+	validInput := regexp.MustCompile(`^[a-zA-Z0-9_\-\./ :,;!?()'"]+$`)
+	errMsg := err.Error()
+	if !validInput.MatchString(errMsg) {
+		return fmt.Errorf("invalid input")
+	}
 	return exec.CommandContext(ctx, "/usr/bin/osascript", "-e", `
 on run argv
     display alert "RateLimitBar" message (item 1 of argv) as critical
-end run`, err.Error()).Run()
+end run`, errMsg).Run()
 }
