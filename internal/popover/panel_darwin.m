@@ -58,6 +58,7 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 - (void)render;
 - (void)performAction:(id)sender;
 - (void)showSettings:(NSButton *)sender;
+- (void)openLink:(NSButton *)sender;
 @end
 
 @implementation RLBPanelController
@@ -108,7 +109,8 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
                 attributes:@{NSFontAttributeName: [NSFont systemFontOfSize:11]}];
             messageHeight = ceil(bounds.size.height) + 8;
         }
-        CGFloat height = 44 + messageHeight + windows.count * 76;
+        NSArray *links = provider[@"links"] ?: @[];
+        CGFloat height = 44 + messageHeight + windows.count * 76 + (links.count ? 36 : 0);
         RLBCard *card = [[RLBCard alloc] initWithFrame:NSMakeRect(14, y, 332, height)];
         [card addSubview:RLBLabel(provider[@"name"], NSMakeRect(16, 12, 296, 22),
             [NSFont systemFontOfSize:14 weight:NSFontWeightSemibold], NSColor.labelColor)];
@@ -143,6 +145,15 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
             [card addSubview:RLBLabel([NSString stringWithFormat:@"%@ · %@", window[@"remaining"], window[@"reset"]], NSMakeRect(16, rowY + 40, 300, 18),
                 [NSFont systemFontOfSize:11], NSColor.secondaryLabelColor)];
             rowY += 76;
+        }
+        CGFloat linkX = 14;
+        for (NSDictionary *link in links) {
+            NSButton *button = [NSButton buttonWithTitle:link[@"title"] target:self action:@selector(openLink:)];
+            button.frame = NSMakeRect(linkX, rowY, 148, 28);
+            button.bezelStyle = NSBezelStyleRounded;
+            button.identifier = link[@"url"];
+            [card addSubview:button];
+            linkX += 152;
         }
         [document addSubview:card];
         y += height + 12;
@@ -179,6 +190,14 @@ static NSTextField *RLBLabel(NSString *text, NSRect frame, NSFont *font, NSColor
 - (void)showSettings:(NSButton *)sender {
     [self.popover close];
     [self.settings showWindow:sender];
+}
+
+- (void)openLink:(NSButton *)sender {
+    NSURL *url = [NSURL URLWithString:sender.identifier];
+    if ([url.scheme isEqualToString:@"https"]) {
+        [self.popover close];
+        [NSWorkspace.sharedWorkspace openURL:url];
+    }
 }
 
 @end

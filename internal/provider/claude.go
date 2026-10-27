@@ -51,5 +51,5 @@ func (c claude) Fetch(_ context.Context) (usage.Usage, error) {
 	if len(windows) == 0 {
 		return usage.Usage{}, errors.New("Claude statusLine cache has no active rate limit windows; use Claude Code to update it")
 	}
-	return usage.Usage{Windows: windows, Stale: now.Sub(snapshot.FetchedAt) > c.staleAfter}, nil
+	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: now.Sub(snapshot.FetchedAt) > c.staleAfter}, nil
 }

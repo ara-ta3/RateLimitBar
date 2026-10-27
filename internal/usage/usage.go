@@ -11,7 +11,8 @@ type Window struct {
 
 // Usage は1つの Provider が持つ複数の Window をまとめる。
 type Usage struct {
-	Windows []Window
+	Windows    []Window
+	ReceivedAt time.Time
 	// Stale は、元データが古く現在の使用率と異なる可能性があることを表す。
 	Stale bool
 }
