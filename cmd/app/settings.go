@@ -62,7 +62,6 @@ func cliAction(store *config.Store, name, command string, current func(config.Se
 func sourceActions(store *config.Store) []menubar.Action {
 	return []menubar.Action{
 		cliAction(store, "Codex", "codex", func(s config.Settings) string { return s.CodexPath }, func(s *config.Settings, path string) { s.CodexPath = path }),
-		cliAction(store, "Claude", "claude", func(s config.Settings) string { return s.ClaudePath }, func(s *config.Settings, path string) { s.ClaudePath = path }),
 		{
 			Title: func() string {
 				return store.Settings().Language.Text("Clear CLI paths (use automatic detection)", "取得元の指定をすべて解除（自動検出に戻す）")
@@ -70,7 +69,6 @@ func sourceActions(store *config.Store) []menubar.Action {
 			OnClick: func(ctx context.Context) bool {
 				if err := store.Update(func(s *config.Settings) {
 					s.CodexPath = ""
-					s.ClaudePath = ""
 				}); err != nil {
 					reportSettingError(ctx, store.Settings().Language, err)
 					return false

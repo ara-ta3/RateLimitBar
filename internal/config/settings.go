@@ -11,9 +11,8 @@ import (
 )
 
 type Settings struct {
-	Language   i18n.Language `json:"language,omitempty"`
-	CodexPath  string        `json:"codexPath,omitempty"`
-	ClaudePath string        `json:"claudePath,omitempty"`
+	Language  i18n.Language `json:"language,omitempty"`
+	CodexPath string        `json:"codexPath,omitempty"`
 }
 
 type Store struct {

@@ -7,10 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sync/atomic"
 	"syscall"
 	"time"
 
+	"ratelimitbar/internal/claudeusage"
 	"ratelimitbar/internal/config"
 	"ratelimitbar/internal/menubar"
 	"ratelimitbar/internal/provider"
@@ -27,7 +27,16 @@ func main() {
 }
 
 func run() error {
-	var autoRefreshClaude atomic.Bool
+	if len(os.Args) > 1 {
+		if len(os.Args) != 2 || os.Args[1] != "claude-statusline" {
+			return fmt.Errorf("usage: ratelimitbar [claude-statusline]")
+		}
+		path, err := claudeusage.CachePath()
+		if err != nil {
+			return err
+		}
+		return claudeusage.Capture(os.Stdin, os.Stdout, path, time.Now())
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -41,9 +50,7 @@ func run() error {
 		reportSettingError(ctx, settings.Settings().Language, fmt.Errorf("%s: %w", settings.Settings().Language.Text("Could not load settings. Select your CLI sources again", "設定を読み込めませんでした。取得元を再指定してください"), err))
 	}
 	registrations := provider.DefaultRegistrations(provider.Config{
-		AutoRefreshClaude: autoRefreshClaude.Load,
-		CodexPath:         func() string { return settings.Settings().CodexPath },
-		ClaudePath:        func() string { return settings.Settings().ClaudePath },
+		CodexPath: func() string { return settings.Settings().CodexPath },
 	})
 	providers := make([]provider.Provider, len(registrations))
 	sources := make([]menubar.Source, len(registrations))
@@ -56,5 +63,5 @@ func run() error {
 	}
 	return menubar.Run(ctx, sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
-	}, sourceActions(settings), languageSettings(settings), menubar.Option{Title: "Claudeのキャッシュを自動更新", EnglishTitle: "Automatically refresh Claude cache", OnChange: autoRefreshClaude.Store})
+	}, sourceActions(settings), languageSettings(settings))
 }
