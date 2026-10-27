@@ -13,11 +13,7 @@ import (
 func TestCLISettingsDisplayDiscoveredPaths(t *testing.T) {
 	dir := t.TempDir()
 	codexPath := filepath.Join(dir, "codex")
-	claudePath := filepath.Join(dir, "claude")
 	if err := os.WriteFile(codexPath, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(claudePath, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
@@ -29,14 +25,8 @@ func TestCLISettingsDisplayDiscoveredPaths(t *testing.T) {
 	if actions[0].Label != "Codex CLI" || actions[0].Detail() != codexPath {
 		t.Fatalf("Codex settings = %q, %q", actions[0].Label, actions[0].Detail())
 	}
-	if actions[1].Label != "Claude CLI" || actions[1].Detail() != claudePath {
-		t.Fatalf("Claude settings = %q, %q", actions[1].Label, actions[1].Detail())
-	}
 	if got := actions[0].Title(); got != "Codex CLI: "+codexPath+"（変更…）" {
 		t.Fatalf("Codex title = %q", got)
-	}
-	if got := actions[1].Title(); got != "Claude CLI: "+claudePath+"（変更…）" {
-		t.Fatalf("Claude title = %q", got)
 	}
 }
 
@@ -52,9 +42,6 @@ func TestCLISettingsDisplaySelectedPathAndReportMissingCLI(t *testing.T) {
 	}
 	if got := actions[0].Title(); got != "Codex CLI: 未検出（指定…）" {
 		t.Fatalf("Codex title = %q", got)
-	}
-	if got := actions[1].Title(); got != "Claude CLI: 未検出（指定…）" {
-		t.Fatalf("Claude title = %q", got)
 	}
 	path := filepath.Join(t.TempDir(), "codex with spaces")
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
@@ -80,7 +67,7 @@ func TestSwitchLanguagePersistsAndClearingPathsKeepsLanguage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Update(func(s *config.Settings) { s.CodexPath = "/cli/codex"; s.ClaudePath = "/cli/claude" }); err != nil {
+	if err := store.Update(func(s *config.Settings) { s.CodexPath = "/cli/codex" }); err != nil {
 		t.Fatal(err)
 	}
 	if !languageSettings(store).Change(context.Background(), i18n.English) {
@@ -90,14 +77,14 @@ func TestSwitchLanguagePersistsAndClearingPathsKeepsLanguage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := restarted.Settings(); got != (config.Settings{CodexPath: "/cli/codex", ClaudePath: "/cli/claude", Language: i18n.English}) {
+	if got := restarted.Settings(); got != (config.Settings{CodexPath: "/cli/codex", Language: i18n.English}) {
 		t.Fatalf("settings = %+v", got)
 	}
 	actions := sourceActions(restarted)
-	if got := actions[2].Title(); got != "Clear CLI paths (use automatic detection)" {
+	if got := actions[1].Title(); got != "Clear CLI paths (use automatic detection)" {
 		t.Fatalf("title = %q", got)
 	}
-	if !actions[2].OnClick(context.Background()) {
+	if !actions[1].OnClick(context.Background()) {
 		t.Fatal("reset failed")
 	}
 	saved, err := config.Load(path)

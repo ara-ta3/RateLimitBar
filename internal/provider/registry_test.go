@@ -39,7 +39,6 @@ func TestDefaultRegistrationsDeclareFixedWindowLabels(t *testing.T) {
 }
 
 func TestDefaultRegistrationsKeepClaudeWindowsMatchingFetchedLabels(t *testing.T) {
-	// NewClaude は実ホームの .claude.json を読むため、Fetch は同じ形式の一時ファイルで行う。
 	claude := newClaudeAt(writeClaudeJSON(t, validCache), fetchedAt, time.Hour)
 	var claudeWindows []string
 	for _, r := range provider.DefaultRegistrations(provider.Config{}) {

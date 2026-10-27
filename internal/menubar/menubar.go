@@ -3,7 +3,6 @@ package menubar
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"fyne.io/systray"
@@ -20,7 +19,7 @@ const loadingTitle = "Loading..."
 // 取得は別の goroutine で行い、イベントループをブロックしない。
 // 取得 error は表示に反映したうえで onFetchError に渡して継続する。
 // 表示を更新できない error は、終了して呼び出し元へ返す。
-func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), actions []Action, language LanguageSettings, options ...Option) error {
+func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, fetch Fetch, onFetchError func(error), actions []Action, language LanguageSettings) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -53,24 +52,6 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 			}
 		}
 		systray.AddSeparator()
-		for _, option := range options {
-			item := systray.AddMenuItemCheckbox(option.Title, "", false)
-			localized.text(item, option.EnglishTitle, option.Title)
-			var enabled atomic.Bool
-			if localized.panel != nil {
-				localized.panel.command(func(l i18n.Language) popover.Command {
-					return popover.Command{Kind: popover.ToggleCommand, Title: l.Text(option.EnglishTitle, option.Title), Checked: enabled.Load()}
-				}, item.ClickedCh)
-			}
-			go toggleOptionOnClick(ctx, item.ClickedCh, item, func(value bool) {
-				option.OnChange(value)
-				enabled.Store(value)
-				localized.redraw()
-			})
-		}
-		if len(options) > 0 {
-			systray.AddSeparator()
-		}
 		triggers := make(chan struct{}, 1)
 		triggers <- struct{}{}
 

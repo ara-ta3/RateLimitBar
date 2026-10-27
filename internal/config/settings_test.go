@@ -19,7 +19,7 @@ func TestMissingSettingsUseAutomaticDiscovery(t *testing.T) {
 	}
 }
 
-func TestCLIPathsSurviveRestartAndUpdatingClaudeKeepsCodex(t *testing.T) {
+func TestUpdatingCodexPathSurvivesRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "RateLimitBar", "settings.json")
 	store, err := config.NewStore(path)
 	if err != nil {
@@ -28,14 +28,14 @@ func TestCLIPathsSurviveRestartAndUpdatingClaudeKeepsCodex(t *testing.T) {
 	if err := store.Update(func(s *config.Settings) { s.CodexPath = "/cli/codex" }); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Update(func(s *config.Settings) { s.ClaudePath = "/cli/claude" }); err != nil {
+	if err := store.Update(func(s *config.Settings) { s.CodexPath = "/cli/codex-updated" }); err != nil {
 		t.Fatal(err)
 	}
 	restarted, err := config.NewStore(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := restarted.Settings(); got != (config.Settings{CodexPath: "/cli/codex", ClaudePath: "/cli/claude"}) {
+	if got := restarted.Settings(); got != (config.Settings{CodexPath: "/cli/codex-updated"}) {
 		t.Fatalf("restarted Settings() = %+v", got)
 	}
 	info, err := os.Stat(path)
@@ -49,7 +49,7 @@ func TestCLIPathsSurviveRestartAndUpdatingClaudeKeepsCodex(t *testing.T) {
 
 func TestResetPersistsAutomaticDiscovery(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	if err := config.Save(path, config.Settings{CodexPath: "/cli/codex", ClaudePath: "/cli/claude"}); err != nil {
+	if err := config.Save(path, config.Settings{CodexPath: "/cli/codex-updated"}); err != nil {
 		t.Fatal(err)
 	}
 	store, err := config.NewStore(path)
@@ -127,5 +127,19 @@ func TestFailedLanguageSaveKeepsCurrentLanguage(t *testing.T) {
 	}
 	if store.Settings().Language != i18n.Japanese {
 		t.Fatal("language changed despite failed save")
+	}
+}
+
+func TestLoadingLegacyClaudePathKeepsCodexAndLanguage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"claudePath":"/old/claude","codexPath":"/cli/codex","language":"en"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != (config.Settings{CodexPath: "/cli/codex", Language: i18n.English}) {
+		t.Fatalf("Load() = %+v", got)
 	}
 }

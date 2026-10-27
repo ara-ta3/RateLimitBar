@@ -8,14 +8,12 @@ type Registration struct {
 }
 
 type Config struct {
-	AutoRefreshClaude func() bool
-	CodexPath         func() string
-	ClaudePath        func() string
+	CodexPath func() string
 }
 
 func DefaultRegistrations(config Config) []Registration {
 	return []Registration{
-		{NewClaudeWithPath(config.AutoRefreshClaude, config.ClaudePath), claudeWindowLabels()},
+		{NewClaude(), claudeWindowLabels()},
 		{NewCodexWithPath(config.CodexPath), codexWindowLabels()},
 		{NewCursor(), []string{WindowMonthly}},
 	}
