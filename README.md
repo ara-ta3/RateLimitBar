@@ -38,7 +38,7 @@ Claude 5h ━╸─── Weekly ━━━╸─  Codex 5h ╸────  Curs
 | Codex | 5-hour, weekly, and model-specific limits when available | `codex app-server`. Requires the `codex` CLI to be installed and signed in |
 | Cursor | Monthly | Access token from macOS Keychain and the usage API. Requires Cursor credentials stored in Keychain |
 
-Claude reads usage saved locally by statusLine. Data older than 15 minutes is marked `(stale)`. It does not update while Claude Code is idle.
+Claude reads usage saved locally by statusLine. Data older than 15 minutes is marked `(stale)`. It does not update without new statusLine input. The panel shows the last received time and recovery steps.
 
 ## Getting started
 
@@ -137,6 +137,24 @@ Start a new Claude Code session and receive one response. Its status line shows 
 - Data older than 15 minutes is marked stale. Windows whose reset times have passed are omitted on the next fetch.
 - Input without `rate_limits`, such as before the first response, leaves the existing cache and timestamp untouched. If only one window is provided, only that window is saved.
 - The old `~/.claude.json` cache and `claude -p /usage` refresh are no longer used. Legacy `claudePath` settings are ignored; your Codex path and language are retained.
+
+#### When Claude shows stale data
+
+The last capture was over 15 minutes ago, so the displayed percentages may differ from current usage.
+
+1. Open Claude Code with the integration configured and receive a response. If needed, configure statusLine as shown above first.
+2. Wait for RateLimitBar’s next automatic read (within 60 seconds), or select Refresh. If the values do not change, check the statusLine configuration and binary path.
+3. To check usage immediately, select Open usage page in the Claude card to open [Claude’s usage screen](https://claude.ai/settings/usage). Setup & help opens these instructions.
+
+Refresh only rereads the saved file. Opening the usage page does not update RateLimitBar. Last received is the time statusLine delivered data, not the time the server measured usage.
+
+#### Automatic updates
+
+RateLimitBar automatically reads the cache every 60 seconds. It does not fetch current usage while Claude Code is idle or closed.
+
+Claude Code’s [official `statusLine.refreshInterval` option](https://code.claude.com/docs/en/statusline#manually-configure-a-status-line) reruns the statusLine command on a timer. This does not establish that server usage is fetched again. It may only renew the received timestamp, so RateLimitBar does not present it as automatic usage refresh.
+
+StatusLine does not consume API tokens, but timer runs start local processes and write files, and stop when Claude Code exits. To opt into command reruns, add `"refreshInterval": 60` to your existing `statusLine` object; remove that field to turn them off. Use a Claude Code response or the usage page to check current usage.
 
 To keep an existing statusLine, save this wrapper script and set its absolute path as `statusLine.command`. Replace the last command with your existing statusLine command and make the wrapper executable with `chmod +x`.
 

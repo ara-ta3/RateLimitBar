@@ -102,12 +102,46 @@ func (p *usagePanel) model(language i18n.Language, results []usage.Result, now t
 			}
 			break
 		}
+		if source.Name == "Claude" {
+			claudeRecovery(&entry, results, language)
+		}
 		model.Providers = append(model.Providers, entry)
 	}
 	for _, command := range p.commands {
 		model.Commands = append(model.Commands, command(language))
 	}
 	return model
+}
+
+func claudeRecovery(entry *popover.Provider, results []usage.Result, language i18n.Language) {
+	entry.Links = []popover.Link{
+		{Title: language.Text("Open usage page", "使用量ページ"), URL: "https://claude.ai/settings/usage"},
+		{Title: language.Text("Setup & help", "連携・更新の手順"), URL: language.Text(
+			"https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code",
+			"https://github.com/ara-ta3/RateLimitBar/blob/main/README.ja.md#claude-code-との連携")},
+	}
+	for _, result := range results {
+		if result.Provider != "Claude" {
+			continue
+		}
+		switch {
+		case result.Err != nil || len(result.Usage.Windows) == 0:
+			entry.Message = language.Text(
+				"Usage unavailable. Check the statusLine setup, then receive a response in Claude Code. You can also check your usage on the usage page.",
+				"使用量を取得できません。連携手順で statusLine の設定を確認し、Claude Code で応答を受け取ってください。使用量ページでも確認できます。")
+		case result.Usage.Stale:
+			entry.Message = language.Text(
+				"Stale data: no update received for over 15 minutes. Receive a response in Claude Code with statusLine configured. Refresh only rereads the saved data; it does not request new usage.",
+				"古いデータ：15分以上受信していません。連携済みの Claude Code で応答を受け取ってください。「更新」は保存済みデータの再読込で、最新の使用量への問い合わせは行いません。")
+		}
+		if !result.Usage.ReceivedAt.IsZero() {
+			if entry.Message != "" {
+				entry.Message += "\n"
+			}
+			entry.Message += language.Text("Last received: ", "最終受信：") + result.Usage.ReceivedAt.Local().Format("2006-01-02 15:04:05 MST")
+		}
+		return
+	}
 }
 
 func (p *usagePanel) dispatch(ctx context.Context, events <-chan string, redraw func()) {

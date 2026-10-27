@@ -39,7 +39,7 @@ func TestClaudeFetchParsesStatusLineCache(t *testing.T) {
 	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{
 		{Label: "5h", UsedPercent: 23, ResetsAt: time.Unix(1700006400, 0)},
 		{Label: "Weekly", UsedPercent: 48, ResetsAt: time.Unix(1700438400, 0)},
-	}, Stale: false}) {
+	}, ReceivedAt: fetchedAt.UTC(), Stale: false}) {
 		t.Fatalf("Fetch() = %+v", got)
 	}
 }
@@ -64,7 +64,7 @@ func TestClaudeFetchAllowsWeeklyWindowOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: "Weekly", UsedPercent: 0, ResetsAt: time.Unix(1700438400, 0)}}}) {
+	if !reflect.DeepEqual(got, usage.Usage{ReceivedAt: fetchedAt.UTC(), Windows: []usage.Window{{Label: "Weekly", UsedPercent: 0, ResetsAt: time.Unix(1700438400, 0)}}}) {
 		t.Fatalf("Fetch() = %+v", got)
 	}
 }
@@ -75,7 +75,7 @@ func TestClaudeFetchAllowsFiveHourWindowOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 100, ResetsAt: time.Unix(1700006400, 0)}}}) {
+	if !reflect.DeepEqual(got, usage.Usage{ReceivedAt: fetchedAt.UTC(), Windows: []usage.Window{{Label: "5h", UsedPercent: 100, ResetsAt: time.Unix(1700006400, 0)}}}) {
 		t.Fatalf("Fetch() = %+v", got)
 	}
 }
@@ -108,7 +108,7 @@ func TestClaudeFetchDropsWindowAtResetTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: "Weekly", UsedPercent: 48, ResetsAt: time.Unix(1700438400, 0)}}, Stale: true}) {
+	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: "Weekly", UsedPercent: 48, ResetsAt: time.Unix(1700438400, 0)}}, ReceivedAt: fetchedAt.UTC(), Stale: true}) {
 		t.Fatalf("Fetch() = %+v", got)
 	}
 }

@@ -69,7 +69,10 @@ func TestPanelMarksStaleUsageInEnglish(t *testing.T) {
 
 	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: provider.WindowWeekly, UsedPercent: 42}}}}}, time.Time{})
 
-	expected := []popover.Provider{{Name: "Claude", Message: "Stale data", Windows: []popover.Window{
+	expected := []popover.Provider{{Name: "Claude", Message: "Stale data: no update received for over 15 minutes. Receive a response in Claude Code with statusLine configured. Refresh only rereads the saved data; it does not request new usage.", Links: []popover.Link{
+		{Title: "Open usage page", URL: "https://claude.ai/settings/usage"},
+		{Title: "Setup & help", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code"},
+	}, Windows: []popover.Window{
 		{Label: "Weekly", UsedPercent: 42, Usage: "Used 42%", Remaining: "58% left", Reset: "Reset time unavailable", Selected: true, Action: "0", Tooltip: "Show in menu bar"},
 	}}}
 	if !reflect.DeepEqual(actual.Providers, expected) {
@@ -211,5 +214,60 @@ func TestPanelSettingsReflectCurrentSourceAndLanguage(t *testing.T) {
 	}
 	if actual.Settings != "Settings…" || actual.SettingsTitle != "RateLimitBar Settings" || actual.GeneralTitle != "General" || actual.SourcesTitle != "CLI sources" || actual.LanguageLabel != "Language" || actual.ChangeSource != "Choose…" {
 		t.Fatalf("English settings labels = %#v", actual)
+	}
+}
+
+func TestPanelExplainsStaleClaudeDataAndShowsReceivedTimeInJapanese(t *testing.T) {
+	sources := []Source{{Name: "Claude"}}
+	panel := newUsagePanel(sources, NewSelection(sources))
+	received := time.Date(2026, 10, 27, 12, 0, 0, 0, time.Local)
+
+	actual := panel.model(i18n.Japanese, []usage.Result{{Provider: "Claude", Usage: usage.Usage{
+		ReceivedAt: received, Stale: true, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}},
+	}}}, received.Add(20*time.Minute))
+
+	expected := []popover.Provider{{Name: "Claude",
+		Message: "古いデータ：15分以上受信していません。連携済みの Claude Code で応答を受け取ってください。「更新」は保存済みデータの再読込で、最新の使用量への問い合わせは行いません。\n最終受信：" + received.Format("2006-01-02 15:04:05 MST"),
+		Links: []popover.Link{
+			{Title: "使用量ページ", URL: "https://claude.ai/settings/usage"},
+			{Title: "連携・更新の手順", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.ja.md#claude-code-との連携"},
+		},
+		Windows: []popover.Window{{Label: "5h", UsedPercent: 42, Usage: "使用済み 42%", Remaining: "残り 58%", Reset: "リセット時刻は不明です", Selected: true, Tooltip: "メニューバーに表示"}},
+	}}
+	if !reflect.DeepEqual(actual.Providers, expected) {
+		t.Fatalf("providers = %#v, want %#v", actual.Providers, expected)
+	}
+}
+
+func TestPanelOffersClaudeSetupHelpWhenCacheIsMissing(t *testing.T) {
+	sources := []Source{{Name: "Claude"}}
+	panel := newUsagePanel(sources, NewSelection(sources))
+
+	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Err: errors.New("private cache path")}}, time.Time{})
+
+	expected := []popover.Provider{{Name: "Claude",
+		Message: "Usage unavailable. Check the statusLine setup, then receive a response in Claude Code. You can also check your usage on the usage page.",
+		Links: []popover.Link{
+			{Title: "Open usage page", URL: "https://claude.ai/settings/usage"},
+			{Title: "Setup & help", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code"},
+		},
+	}}
+	if !reflect.DeepEqual(actual.Providers, expected) {
+		t.Fatalf("providers = %#v, want %#v", actual.Providers, expected)
+	}
+}
+
+func TestPanelShowsFreshClaudeReceivedTimeWithoutRecoveryWarning(t *testing.T) {
+	sources := []Source{{Name: "Claude"}}
+	panel := newUsagePanel(sources, NewSelection(sources))
+	received := time.Date(2026, 10, 27, 12, 0, 0, 0, time.Local)
+
+	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Usage: usage.Usage{
+		ReceivedAt: received, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}},
+	}}}, received)
+
+	expected := "Last received: " + received.Format("2006-01-02 15:04:05 MST")
+	if actual.Providers[0].Message != expected {
+		t.Fatalf("message = %q, want %q", actual.Providers[0].Message, expected)
 	}
 }

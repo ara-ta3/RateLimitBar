@@ -17,6 +17,12 @@ type Provider struct {
 	Name    string   `json:"name"`
 	Message string   `json:"message"`
 	Windows []Window `json:"windows"`
+	Links   []Link   `json:"links,omitempty"`
+}
+
+type Link struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
 }
 
 type Window struct {
