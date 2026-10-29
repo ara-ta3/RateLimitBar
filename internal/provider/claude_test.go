@@ -161,6 +161,7 @@ func TestClaudeFetchRereadsUpdatedCache(t *testing.T) {
 
 func TestClaudeDefaultProviderReadsStatusLineCachePath(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("PATH", t.TempDir())
 	path, err := claudeusage.CachePath()
 	if err != nil {
 		t.Fatal(err)
