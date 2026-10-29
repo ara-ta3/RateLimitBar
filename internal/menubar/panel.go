@@ -127,12 +127,12 @@ func claudeRecovery(entry *popover.Provider, results []usage.Result, language i1
 		switch {
 		case result.Err != nil || len(result.Usage.Windows) == 0:
 			entry.Message = language.Text(
-				"Usage unavailable. Check the statusLine setup, then receive a response in Claude Code. You can also check your usage on the usage page.",
-				"使用量を取得できません。連携手順で statusLine の設定を確認し、Claude Code で応答を受け取ってください。使用量ページでも確認できます。")
+				"Usage unavailable. Check the statusLine setup and run Claude /usage once in the RateLimitBar cache folder to complete login and workspace trust. Then select Refresh.",
+				"使用量を取得できません。statusLine の設定を確認し、連携手順に沿って専用フォルダーで Claude /usage を一度実行し、ログイン・信頼確認を済ませてから「更新」を押してください。")
 		case result.Usage.Stale:
 			entry.Message = language.Text(
-				"Stale data: no update received for over 15 minutes. Receive a response in Claude Code with statusLine configured. Refresh only rereads the saved data; it does not request new usage.",
-				"古いデータ：15分以上受信していません。連携済みの Claude Code で応答を受け取ってください。「更新」は保存済みデータの再読込で、最新の使用量への問い合わせは行いません。")
+				"Stale data: the last refresh failed or the data is over 15 minutes old. Refresh runs Claude /usage. Check CLI login, workspace trust, and the statusLine setup if this persists.",
+				"古いデータ：更新に失敗したか、15分以上受信していません。「更新」で Claude /usage を実行します。改善しない場合は CLI のログイン・信頼確認と statusLine の設定を確認してください。")
 		}
 		if !result.Usage.ReceivedAt.IsZero() {
 			if entry.Message != "" {

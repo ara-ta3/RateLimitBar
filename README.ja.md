@@ -38,7 +38,7 @@ Claude 5h ━╸─── 週間 ━━━╸─  Codex 5h ╸────  Curs
 | Codex | 5 時間・週間・取得できたモデル固有の枠 | `codex app-server`。インストール・ログイン済みの `codex` CLI が必要 |
 | Cursor | 月間 | macOS Keychain のアクセストークンと usage API。Cursor の認証情報が Keychain に保存されている必要あり |
 
-Claude は statusLine が保存したローカルの使用量を読み取ります。15 分より古いデータは「古いデータ」と表示します。Claude Code から新たに受信しない間は更新されません。パネルには最終受信時刻と対処手順を表示します。
+Claude は更新時に対話モードの `claude /usage` を起動し、statusLine が保存した使用量を読み取ります。取得に失敗した場合や15分より古いデータは「古いデータ」と表示します。パネルには最終受信時刻と対処手順を表示します。
 
 ## セットアップ
 
@@ -130,31 +130,34 @@ Claude は以下の statusLine 連携、Cursor は Keychain と API を使用す
 
 ソースから利用する場合は、`make build` 後の `bin/ratelimitbar` の絶対パスを指定します。`launch` ではなく `ratelimitbar` を指定してください。
 
-Claude Code を新しく起動して1回応答を受け取ると、statusLine に `Claude 5h 5% / Weekly 6%` のように表示され、RateLimitBar の次回更新にも反映されます。Pro・Max は公式ドキュメントの対象で、Team でも実機確認済みです。API キーでの利用など、`rate_limits` が渡されない環境では使用量を取得できません。[公式の statusLine 仕様](https://code.claude.com/docs/en/statusline#rate-limit-usage)も参照してください。
+設定後、ターミナルで一度だけ以下を実行し、ログインと専用フォルダーの信頼確認を済ませてください。`/usage` の読み込み後に Esc で画面を閉じ、statusLine に `Claude 5h 5% / Weekly 6%` のように表示されることを確認してから `/exit` で終了します。
+
+```sh
+mkdir -p ~/Library/Caches/RateLimitBar
+cd ~/Library/Caches/RateLimitBar
+claude /usage
+```
+
+Pro・Max は公式ドキュメントの対象で、Team でも実機確認済みです。API キーでの利用など、`rate_limits` が渡されない環境では使用量を取得できません。[公式の statusLine 仕様](https://code.claude.com/docs/en/statusline#rate-limit-usage)も参照してください。
 
 - 保存先は `~/Library/Caches/RateLimitBar/claude-usage.json` です。使用率・リセット時刻・受信時刻だけを保存し、ファイルの権限は `0600` にします。
-- RateLimitBar は60秒ごとにファイルを読み取ります。「更新」でも読み直せますが、Claude Code への問い合わせは行いません。
-- 15分より古い値は古いデータとして表示します。リセット時刻を過ぎた枠は、次の取得時に表示対象から外します。
-- 初回応答前などで `rate_limits` がない場合は、保存済みの値と受信時刻を維持します。5時間・週間のどちらかだけが渡された場合は、その枠だけを保存します。
-- 従来の `~/.claude.json` と `claude -p /usage` による自動更新は使用しません。旧 `claudePath` 設定は無視し、Codex の取得元と言語設定は引き継ぎます。
+- RateLimitBar は起動時・60秒ごとの自動更新・「更新」で `claude /usage` を対話端末上に起動します。取得画面を閉じて statusLine の保存を待ち、起動したプロセスを終了します。取得の上限は20秒です。
+- `claude` は PATH から検索します。専用キャッシュフォルダーで実行し、追加の MCP サーバーは起動しません。Claude の既存セッションは操作しません。ユーザー設定の起動 hook と statusLine コマンドは実行されます。
+- `/usage` はモデルへの推論を要求しません。ただし Claude の起動と使用量の問い合わせが発生します。`claude -p /usage` はセッションの料金・トークン数を返すため、この取得には使用しません。
+- 取得に失敗した場合は、保存済みの値と最終受信時刻を維持し「古いデータ」として表示します。15分より古い値も同様です。リセット時刻を過ぎた枠は表示しません。
+- `rate_limits` がない statusLine 入力は保存済みの値と受信時刻を変更しません。従来の `~/.claude.json` の使用量キャッシュと旧 `claudePath` 設定は使用しません。
 
 #### 「古いデータ」と表示されたら
 
-最後の受信から15分以上経過しています。表示中の割合は前回受信した値なので、現在の使用率とは異なる可能性があります。
+1. 上の専用フォルダーで `claude /usage` を実行し、ログイン・信頼確認と statusLine の設定を確認してください。取得画面は Esc で閉じます。
+2. RateLimitBar の「更新」を押してください。`claude` が PATH 上にあり、設定した実行ファイルが存在することも確認します。
+3. すぐに確認したい場合は、Claude の欄の「使用量ページ」から [Claude の使用量画面](https://claude.ai/settings/usage)を開けます。「連携・更新の手順」からこの設定手順も開けます。
 
-1. 連携設定済みの Claude Code を開き、応答を受け取ってください。連携していない場合は、上の設定を先に追加します。
-2. RateLimitBar の次の自動読込（最大60秒）を待つか、「更新」を押してください。これで変わらなければ、statusLine の設定と実行ファイルのパスを確認します。
-3. すぐに確認したい場合は、Claude の欄の「使用量ページ」から [Claude の使用量画面](https://claude.ai/settings/usage)を開いてください。「連携・更新の手順」からこの設定手順も開けます。
-
-「更新」は保存ファイルを読み直す操作です。使用量ページを開いても RateLimitBar の値は更新されません。最終受信時刻は statusLine からデータを受け取った時刻で、サーバーが使用率を計測した時刻ではありません。
+使用量ページを開く操作では RateLimitBar の値は更新されません。最終受信時刻は statusLine からデータを受け取った時刻です。
 
 #### 自動更新について
 
-RateLimitBar は60秒ごとに保存ファイルを自動で読みます。Claude Code を使っていない間も、最新の使用率を取得する機能は実装していません。
-
-Claude Code には `statusLine.refreshInterval`（秒）でコマンドを定期実行する[公式機能](https://code.claude.com/docs/en/statusline#manually-configure-a-status-line)があります。ただし、これは statusLine の再実行であり、サーバーの使用率を再取得する保証は確認できていません。受信時刻だけが新しくなる可能性があるため、RateLimitBar の自動更新設定としては採用していません。
-
-statusLine 自体は API トークンを消費しませんが、定期実行にはローカルのプロセス起動とファイル書き込みが伴います。また、Claude Code を終了している間は動きません。再実行を利用する場合は既存の `statusLine` に `"refreshInterval": 60` を追加し、停止する場合はその項目を削除してください。最新値の確認は、Claude Code での応答または使用量ページで行ってください。
+Claude Code を手動で起動していなくても、RateLimitBar が60秒ごとに新しい `/usage` を実行します。`statusLine.refreshInterval` の追加は不要です。この方式は対話画面の動作に依存するため、Claude Code の更新によって連携できなくなった場合は、保存済みの値を古いデータとして表示します。
 
 既存の statusLine を併用する場合は、次のスクリプトを作り、その絶対パスを `statusLine.command` に設定します。最後の行は現在使っている statusLine コマンドに置き換え、スクリプトには `chmod +x` で実行権限を付けてください。
 
@@ -170,8 +173,8 @@ printf '%s' "$payload" | /absolute/path/to/your-existing-statusline
 | 症状 | 確認すること |
 | --- | --- |
 | CLI が見つからない | 「取得元の設定」で実行ファイルを指定してください。`~/.zshrc` だけに設定した `PATH` は、Finder 起動時には読み込まれません |
-| Claude に「古いデータ」が付く | 最後の受信から15分を過ぎています。連携設定済みの Claude Code で応答を受け取ってください |
-| Claude の取得に失敗する | statusLine の設定と実行ファイルのパスを確認してください。初回応答前・連携未設定・すべての枠が期限切れの場合は表示できません |
+| Claude に「古いデータ」が付く | 更新に失敗したか、最後の受信から15分を過ぎています。上の専用フォルダーで `/usage` を実行し、ログイン・信頼確認・statusLine を確認してください |
+| Claude の取得に失敗する | 専用フォルダーでのログイン・信頼確認、statusLine の設定、PATH 上の `claude` と連携用実行ファイルを確認してください。使用量を一度も保存していない場合や、保存済みの枠がすべて期限切れの場合は表示できません |
 | 「取得に失敗しました」が表示される | 対応サービスの認証状態と取得元を確認し、「更新」で再取得してください。Cursor は Keychain の認証情報と API への接続が必要です |
 
 ## 開発

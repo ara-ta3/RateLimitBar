@@ -17,13 +17,14 @@ type claude struct {
 	pathErr    error
 	staleAfter time.Duration
 	now        func() time.Time
+	refresh    func(context.Context, string) error
 }
 
 func claudeWindowLabels() []string { return []string{WindowFiveHour, WindowWeekly} }
 
 func NewClaude() Provider {
 	path, err := claudeusage.CachePath()
-	return claude{path: path, pathErr: err, staleAfter: DefaultClaudeStaleAfter, now: time.Now}
+	return claude{path: path, pathErr: err, staleAfter: DefaultClaudeStaleAfter, now: time.Now, refresh: refreshClaude}
 }
 
 func NewClaudeFromFile(path string, staleAfter time.Duration, now func() time.Time) Provider {
@@ -32,13 +33,19 @@ func NewClaudeFromFile(path string, staleAfter time.Duration, now func() time.Ti
 
 func (claude) Name() string { return "Claude" }
 
-func (c claude) Fetch(_ context.Context) (usage.Usage, error) {
+func (c claude) Fetch(ctx context.Context) (usage.Usage, error) {
 	if c.pathErr != nil {
 		return usage.Usage{}, c.pathErr
 	}
+	var refreshErr error
+	if c.refresh != nil {
+		refreshCtx, cancel := context.WithTimeout(ctx, DefaultClaudeTimeout)
+		defer cancel()
+		refreshErr = c.refresh(refreshCtx, c.path)
+	}
 	snapshot, err := claudeusage.Read(c.path)
 	if err != nil {
-		return usage.Usage{}, err
+		return usage.Usage{}, errors.Join(refreshErr, err)
 	}
 	now := c.now()
 	windows := make([]usage.Window, 0, 2)
@@ -49,7 +56,7 @@ func (c claude) Fetch(_ context.Context) (usage.Usage, error) {
 		windows = append(windows, usage.Window{Label: WindowWeekly, UsedPercent: int(math.Round(w.UsedPercentage)), ResetsAt: w.ResetsAt})
 	}
 	if len(windows) == 0 {
-		return usage.Usage{}, errors.New("Claude statusLine cache has no active rate limit windows; use Claude Code to update it")
+		return usage.Usage{}, errors.Join(refreshErr, errors.New("Claude statusLine cache has no active rate limit windows; run Claude /usage with statusLine configured"))
 	}
-	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: now.Sub(snapshot.FetchedAt) > c.staleAfter}, nil
+	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: refreshErr != nil || now.Sub(snapshot.FetchedAt) > c.staleAfter}, nil
 }

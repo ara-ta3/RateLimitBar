@@ -69,7 +69,7 @@ func TestPanelMarksStaleUsageInEnglish(t *testing.T) {
 
 	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: provider.WindowWeekly, UsedPercent: 42}}}}}, time.Time{})
 
-	expected := []popover.Provider{{Name: "Claude", Message: "Stale data: no update received for over 15 minutes. Receive a response in Claude Code with statusLine configured. Refresh only rereads the saved data; it does not request new usage.", Links: []popover.Link{
+	expected := []popover.Provider{{Name: "Claude", Message: "Stale data: the last refresh failed or the data is over 15 minutes old. Refresh runs Claude /usage. Check CLI login, workspace trust, and the statusLine setup if this persists.", Links: []popover.Link{
 		{Title: "Open usage page", URL: "https://claude.ai/settings/usage"},
 		{Title: "Setup & help", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code"},
 	}, Windows: []popover.Window{
@@ -227,7 +227,7 @@ func TestPanelExplainsStaleClaudeDataAndShowsReceivedTimeInJapanese(t *testing.T
 	}}}, received.Add(20*time.Minute))
 
 	expected := []popover.Provider{{Name: "Claude",
-		Message: "古いデータ：15分以上受信していません。連携済みの Claude Code で応答を受け取ってください。「更新」は保存済みデータの再読込で、最新の使用量への問い合わせは行いません。\n最終受信：" + received.Format("2006-01-02 15:04:05 MST"),
+		Message: "古いデータ：更新に失敗したか、15分以上受信していません。「更新」で Claude /usage を実行します。改善しない場合は CLI のログイン・信頼確認と statusLine の設定を確認してください。\n最終受信：" + received.Format("2006-01-02 15:04:05 MST"),
 		Links: []popover.Link{
 			{Title: "使用量ページ", URL: "https://claude.ai/settings/usage"},
 			{Title: "連携・更新の手順", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.ja.md#claude-code-との連携"},
@@ -246,7 +246,7 @@ func TestPanelOffersClaudeSetupHelpWhenCacheIsMissing(t *testing.T) {
 	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Err: errors.New("private cache path")}}, time.Time{})
 
 	expected := []popover.Provider{{Name: "Claude",
-		Message: "Usage unavailable. Check the statusLine setup, then receive a response in Claude Code. You can also check your usage on the usage page.",
+		Message: "Usage unavailable. Check the statusLine setup and run Claude /usage once in the RateLimitBar cache folder to complete login and workspace trust. Then select Refresh.",
 		Links: []popover.Link{
 			{Title: "Open usage page", URL: "https://claude.ai/settings/usage"},
 			{Title: "Setup & help", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code"},
