@@ -95,7 +95,7 @@ Select **言語 → English** or **Language → 日本語** to switch the menu, 
 
 ### Configure CLI paths
 
-By default, the app looks for `codex` on its `PATH`. When launched as a macOS app, it loads the login environment of `$SHELL`, falling back to `/bin/zsh` if unset.
+By default, the app looks for `codex` on its `PATH`. The macOS app starts the binary directly and reads `PATH` from a login shell using `$SHELL` (or `/bin/zsh` if unset). It waits up to 5 seconds and starts with the original `PATH` if loading fails.
 
 If a CLI cannot be found, or you want to use a specific executable:
 
@@ -128,7 +128,7 @@ Place `RateLimitBar.app` in `/Applications` and merge the following into your ex
 }
 ```
 
-For source builds, run `make build` and use the absolute path to `bin/ratelimitbar`. Use the binary, not the `launch` script.
+For source builds, run `make build` and use the absolute path to `bin/ratelimitbar`. Use the `ratelimitbar` binary for both app and source builds.
 
 After configuring statusLine, run the following once in a terminal to complete login and workspace trust for the dedicated cache folder. After `/usage` loads, press Esc and check that the status line shows text such as `Claude 5h 5% / Weekly 6%`, then enter `/exit`.
 
@@ -199,7 +199,7 @@ internal/dialog/   File picker dialog
 internal/menubar/  Menu bar display, interactions, and refresh
 internal/provider/ Usage fetching for each service
 internal/usage/    Usage data types
-packaging/macos/   App icons, launcher, and Info.plist
+packaging/macos/   App icons and Info.plist
 ```
 
 ### Releases

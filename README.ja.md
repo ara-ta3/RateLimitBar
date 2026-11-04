@@ -95,7 +95,7 @@ open dist/RateLimitBar.app
 
 ### CLI の取得元を設定
 
-初期状態では、アプリの `PATH` から `codex` を自動検出します。macOS アプリから起動するときは `$SHELL`（未設定なら `/bin/zsh`）のログイン環境を読み込みます。
+初期状態では、アプリの `PATH` から `codex` を自動検出します。macOS アプリは本体を直接起動し、`$SHELL`（未設定なら `/bin/zsh`）のログインシェルから `PATH` を読み込みます。取得は最大 5 秒で打ち切り、失敗した場合も元の `PATH` で起動します。
 
 CLI が見つからない場合や、特定の実行ファイルを使いたい場合は、次の手順で指定できます。
 
@@ -128,7 +128,7 @@ Claude は以下の statusLine 連携、Cursor は Keychain と API を使用す
 }
 ```
 
-ソースから利用する場合は、`make build` 後の `bin/ratelimitbar` の絶対パスを指定します。`launch` ではなく `ratelimitbar` を指定してください。
+ソースから利用する場合は、`make build` 後の `bin/ratelimitbar` の絶対パスを指定します。アプリ版・ソース版ともに `ratelimitbar` 本体を指定してください。
 
 設定後、ターミナルで一度だけ以下を実行し、ログインと専用フォルダーの信頼確認を済ませてください。`/usage` の読み込み後に Esc で画面を閉じ、statusLine に `Claude 5h 5% / Weekly 6%` のように表示されることを確認してから `/exit` で終了します。
 
@@ -199,7 +199,7 @@ internal/dialog/   ファイル選択ダイアログ
 internal/menubar/  メニューバーの表示・操作・更新
 internal/provider/ 各サービスの使用率取得
 internal/usage/    使用率データの型
-packaging/macos/   macOS アプリのアイコン・起動スクリプト・Info.plist
+packaging/macos/   macOS アプリのアイコン・Info.plist
 ```
 
 ### リリース
