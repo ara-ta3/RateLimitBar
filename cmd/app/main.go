@@ -41,6 +41,10 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	if err := loadBundlePath(ctx); err != nil {
+		log.Printf("could not load login shell PATH: %v", err)
+	}
+
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return err

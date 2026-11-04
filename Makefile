@@ -12,7 +12,7 @@ app:
 	go build -o "$(APP)/Contents/MacOS/ratelimitbar" ./cmd/app
 	cp packaging/macos/Info.plist "$(APP)/Contents/Info.plist"
 	cp packaging/macos/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
-	install -m 755 packaging/macos/launch "$(APP)/Contents/MacOS/launch"
+	rm -f "$(APP)/Contents/MacOS/launch"
 	plutil -lint "$(APP)/Contents/Info.plist"
 
 test:
