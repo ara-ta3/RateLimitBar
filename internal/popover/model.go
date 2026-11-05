@@ -1,16 +1,18 @@
 package popover
 
 type Model struct {
-	Providers     []Provider `json:"providers"`
-	Commands      []Command  `json:"commands"`
-	Settings      string     `json:"settings"`
-	SettingsTitle string     `json:"settingsTitle"`
-	GeneralTitle  string     `json:"generalTitle"`
-	SourcesTitle  string     `json:"sourcesTitle"`
-	LanguageLabel string     `json:"languageLabel"`
-	ChangeSource  string     `json:"changeSource"`
-	Refresh       Command    `json:"refresh"`
-	Quit          Command    `json:"quit"`
+	Providers        []Provider `json:"providers"`
+	Commands         []Command  `json:"commands"`
+	Settings         string     `json:"settings"`
+	SettingsTitle    string     `json:"settingsTitle"`
+	GeneralTitle     string     `json:"generalTitle"`
+	SourcesTitle     string     `json:"sourcesTitle"`
+	StaleFailureHint string     `json:"staleFailureHint"`
+	ClaudeStaleLabel string     `json:"claudeStaleLabel"`
+	LanguageLabel    string     `json:"languageLabel"`
+	ChangeSource     string     `json:"changeSource"`
+	Refresh          Command    `json:"refresh"`
+	Quit             Command    `json:"quit"`
 }
 
 type Provider struct {
@@ -39,9 +41,10 @@ type Window struct {
 type CommandKind string
 
 const (
-	ToggleCommand   CommandKind = "toggle"
-	SourceCommand   CommandKind = "source"
-	LanguageCommand CommandKind = "language"
+	ToggleCommand      CommandKind = "toggle"
+	SourceCommand      CommandKind = "source"
+	LanguageCommand    CommandKind = "language"
+	ClaudeStaleCommand CommandKind = "claudeStale"
 )
 
 type Command struct {

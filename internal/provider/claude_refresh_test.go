@@ -115,3 +115,32 @@ func TestClaudeFetchReportsRefreshFailureWithoutCache(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestClaudeFetchUsesChangedStaleThresholdWithoutRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+	now := time.Now().UTC()
+	if err := claudeusage.Capture(strings.NewReader(`{"rate_limits":{"five_hour":{"used_percentage":12,"resets_at":4102444800}}}`), io.Discard, path, now.Add(-30*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	threshold := 15 * time.Minute
+	p := NewClaudeWithStaleAfter(func() time.Duration { return threshold }).(claude)
+	p.path = path
+	p.pathErr = nil
+	p.now = func() time.Time { return now }
+	p.refresh = func(context.Context, string) error { return nil }
+	got, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Stale != true {
+		t.Fatalf("Stale = %v, want true at 15 minute threshold", got.Stale)
+	}
+	threshold = time.Hour
+	got, err = p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Stale != false {
+		t.Fatalf("Stale = %v, want false at 1 hour threshold", got.Stale)
+	}
+}

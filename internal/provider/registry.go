@@ -1,5 +1,7 @@
 package provider
 
+import "time"
+
 // Registration は、Provider と、その Provider が持つ Window のラベル列を対にしたもの。
 // Windows は固定のラベルだけを宣言する。取得して初めて決まるラベル(Codex のモデル固有 limit)は含まない。
 type Registration struct {
@@ -8,12 +10,13 @@ type Registration struct {
 }
 
 type Config struct {
-	CodexPath func() string
+	CodexPath        func() string
+	ClaudeStaleAfter func() time.Duration
 }
 
 func DefaultRegistrations(config Config) []Registration {
 	return []Registration{
-		{NewClaude(), claudeWindowLabels()},
+		{NewClaudeWithStaleAfter(config.ClaudeStaleAfter), claudeWindowLabels()},
 		{NewCodexWithPath(config.CodexPath), codexWindowLabels()},
 		{NewCursor(), []string{WindowMonthly}},
 	}

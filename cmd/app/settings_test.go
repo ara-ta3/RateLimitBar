@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"ratelimitbar/internal/config"
 	"ratelimitbar/internal/i18n"
@@ -103,5 +104,68 @@ func TestSwitchLanguagePersistsAndClearingPathsKeepsLanguage(t *testing.T) {
 	}
 	if saved.Language != i18n.Japanese {
 		t.Fatalf("saved language = %q", saved.Language)
+	}
+}
+
+func TestClaudeStaleSettingPersistsAndKeepsOtherSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	store, err := config.NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(s *config.Settings) {
+		s.CodexPath = "/cli/codex"
+		s.Language = i18n.English
+	}); err != nil {
+		t.Fatal(err)
+	}
+	actions := claudeStaleActions(store)
+	if actions[0].Checked() != true || actions[2].Checked() != false {
+		t.Fatal("expected default 15 minute selection")
+	}
+	if actions[2].OnClick(context.Background()) != true {
+		t.Fatal("setting change failed")
+	}
+	if actions[0].Checked() != false || actions[2].Checked() != true {
+		t.Fatal("expected 1 hour selection")
+	}
+	if got := actions[2].Title(); got != "1 hour" {
+		t.Fatalf("title = %q", got)
+	}
+	restarted, err := config.NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := restarted.Settings(); got != (config.Settings{CodexPath: "/cli/codex", Language: i18n.English, ClaudeStaleAfter: config.ClaudeStaleAfter1Hour}) {
+		t.Fatalf("settings = %+v", got)
+	}
+	if got := restarted.Settings().ClaudeStaleAfter.Duration(); got != time.Hour {
+		t.Fatalf("duration = %v", got)
+	}
+	if sourceActions(restarted)[1].OnClick(context.Background()) != true {
+		t.Fatal("clear paths failed")
+	}
+	if got := restarted.Settings().ClaudeStaleAfter; got != config.ClaudeStaleAfter1Hour {
+		t.Fatalf("clearing paths changed threshold: %v", got)
+	}
+}
+
+func TestFailedClaudeStaleSaveKeepsSelection(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	store, err := config.NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	actions := claudeStaleActions(store)
+	if actions[2].OnClick(ctx) != false {
+		t.Fatal("expected save failure")
+	}
+	if actions[0].Checked() != true || actions[2].Checked() != false {
+		t.Fatal("selection changed despite failed save")
 	}
 }

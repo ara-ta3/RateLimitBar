@@ -38,7 +38,7 @@ Claude 5h ━╸─── Weekly ━━━╸─  Codex 5h ╸────  Curs
 | Codex | 5-hour, weekly, and model-specific limits when available | `codex app-server`. Requires the `codex` CLI to be installed and signed in |
 | Cursor | Monthly | Access token from macOS Keychain and the usage API. Requires Cursor credentials stored in Keychain |
 
-Claude runs interactive `claude /usage` on refresh and reads the usage saved by statusLine. Failed refreshes and data older than 15 minutes are marked `(stale)`. The panel shows the last received time and recovery steps.
+Claude runs interactive `claude /usage` on refresh and reads the usage saved by statusLine. Failed refreshes and data older than the configured threshold (15 minutes by default) are marked `(stale)`. The panel shows the last received time and recovery steps.
 
 ## Getting started
 
@@ -144,8 +144,10 @@ The official docs cover Pro and Max; Team was also verified locally. Environment
 - At startup, every 60 seconds, and on Refresh, RateLimitBar launches interactive `claude /usage` in a pseudo-terminal. It closes the usage screen, waits for statusLine to save new data, and terminates the process it started. Each attempt has a 20-second timeout.
 - `claude` is resolved from PATH and runs in the dedicated cache folder with additional MCP servers disabled. Existing Claude sessions are untouched. User-configured startup hooks and the statusLine command still run.
 - `/usage` does not request model inference, but starts Claude and requests usage data. `claude -p /usage` returns session costs and token counts and is not used here.
-- If refresh fails, saved values and their received time are retained and marked stale. Data older than 15 minutes is also stale; expired windows are omitted.
+- If refresh fails, saved values and their received time are retained and marked stale. Data older than the configured threshold (15 minutes by default) is also stale; expired windows are omitted.
 - StatusLine input without `rate_limits` leaves saved values and their timestamp untouched. The old `~/.claude.json` usage cache and legacy `claudePath` setting are not used.
+
+Select **Settings… → Claude stale after** to choose 15 minutes (default), 30 minutes, 1 hour, or 3 hours. Changes are saved and apply on the next fetch without restarting. Failed refreshes are still marked stale immediately, regardless of this setting.
 
 #### When Claude shows stale data
 
@@ -173,7 +175,7 @@ printf '%s' "$payload" | /absolute/path/to/your-existing-statusline
 | Symptom | What to check |
 | --- | --- |
 | CLI not found | Select the executable under CLI source settings / 取得元の設定. A `PATH` configured only in `~/.zshrc` is not loaded when launching from Finder |
-| Claude shows `(stale)` | Refresh failed or data is over 15 minutes old. Run `/usage` in the cache folder above to check login, workspace trust, and statusLine |
+| Claude shows `(stale)` | Refresh failed or data is older than the configured threshold (15 minutes by default). Run `/usage` in the cache folder above to check login, workspace trust, and statusLine |
 | Claude fails to fetch | Check login and workspace trust in the cache folder, statusLine configuration, and the Claude and integration binaries. Usage is unavailable without a saved capture or after all saved windows expire |
 | `Failed to fetch` | Check the service's authentication and data source, then select `Refresh`. Cursor requires Keychain credentials and access to its usage API |
 

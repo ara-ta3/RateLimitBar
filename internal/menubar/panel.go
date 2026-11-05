@@ -61,14 +61,16 @@ func (p *usagePanel) model(language i18n.Language, results []usage.Result, now t
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	model := popover.Model{
-		Settings:      language.Text("Settings…", "設定…"),
-		SettingsTitle: language.Text("RateLimitBar Settings", "RateLimitBarの設定"),
-		GeneralTitle:  language.Text("General", "一般"),
-		SourcesTitle:  language.Text("CLI sources", "CLIの取得元"),
-		LanguageLabel: language.Text("Language", "言語"),
-		ChangeSource:  language.Text("Choose…", "選択…"),
-		Refresh:       popover.Command{Title: language.Text("Refresh", "更新"), Action: p.refresh},
-		Quit:          popover.Command{Title: language.Text("Quit", "終了"), Action: p.quit},
+		Settings:         language.Text("Settings…", "設定…"),
+		SettingsTitle:    language.Text("RateLimitBar Settings", "RateLimitBarの設定"),
+		GeneralTitle:     language.Text("General", "一般"),
+		SourcesTitle:     language.Text("CLI sources", "CLIの取得元"),
+		StaleFailureHint: language.Text("Failed refreshes are marked stale immediately.", "更新に失敗した場合は、この時間内でも古いデータと表示します。"),
+		ClaudeStaleLabel: language.Text("Claude stale after", "Claudeの古いデータ判定"),
+		LanguageLabel:    language.Text("Language", "言語"),
+		ChangeSource:     language.Text("Choose…", "選択…"),
+		Refresh:          popover.Command{Title: language.Text("Refresh", "更新"), Action: p.refresh},
+		Quit:             popover.Command{Title: language.Text("Quit", "終了"), Action: p.quit},
 	}
 	for _, source := range p.sources {
 		entry := popover.Provider{Name: source.Name, Message: language.Text("Loading…", "読み込み中…")}
@@ -131,8 +133,8 @@ func claudeRecovery(entry *popover.Provider, results []usage.Result, language i1
 				"使用量を取得できません。statusLine の設定を確認し、連携手順に沿って専用フォルダーで Claude /usage を一度実行し、ログイン・信頼確認を済ませてから「更新」を押してください。")
 		case result.Usage.Stale:
 			entry.Message = language.Text(
-				"Stale data: the last refresh failed or the data is over 15 minutes old. Refresh runs Claude /usage. Check CLI login, workspace trust, and the statusLine setup if this persists.",
-				"古いデータ：更新に失敗したか、15分以上受信していません。「更新」で Claude /usage を実行します。改善しない場合は CLI のログイン・信頼確認と statusLine の設定を確認してください。")
+				"Stale data: the last refresh failed or the data is older than the configured threshold. Refresh runs Claude /usage. Check CLI login, workspace trust, and the statusLine setup if this persists.",
+				"古いデータ：更新に失敗したか、設定した時間を超えて受信していません。「更新」で Claude /usage を実行します。改善しない場合は CLI のログイン・信頼確認と statusLine の設定を確認してください。")
 		}
 		if !result.Usage.ReceivedAt.IsZero() {
 			if entry.Message != "" {

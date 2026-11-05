@@ -9,6 +9,7 @@ import (
 	"ratelimitbar/internal/dialog"
 	"ratelimitbar/internal/i18n"
 	"ratelimitbar/internal/menubar"
+	"ratelimitbar/internal/popover"
 	"ratelimitbar/internal/provider"
 )
 
@@ -90,4 +91,31 @@ func languageSettings(store *config.Store) menubar.LanguageSettings {
 			return true
 		},
 	}
+}
+
+func claudeStaleActions(store *config.Store) []menubar.Action {
+	var actions []menubar.Action
+	for _, option := range []struct {
+		value             config.ClaudeStaleAfter
+		english, japanese string
+	}{
+		{config.ClaudeStaleAfter15Minutes, "15 minutes (default)", "15分（既定）"},
+		{config.ClaudeStaleAfter30Minutes, "30 minutes", "30分"},
+		{config.ClaudeStaleAfter1Hour, "1 hour", "1時間"},
+		{config.ClaudeStaleAfter3Hours, "3 hours", "3時間"},
+	} {
+		actions = append(actions, menubar.Action{
+			Kind:    popover.ClaudeStaleCommand,
+			Title:   func() string { return store.Settings().Language.Text(option.english, option.japanese) },
+			Checked: func() bool { return store.Settings().ClaudeStaleAfter.Duration() == option.value.Duration() },
+			OnClick: func(ctx context.Context) bool {
+				if err := store.Update(func(s *config.Settings) { s.ClaudeStaleAfter = option.value }); err != nil {
+					reportSettingError(ctx, store.Settings().Language, err)
+					return false
+				}
+				return true
+			},
+		})
+	}
+	return actions
 }

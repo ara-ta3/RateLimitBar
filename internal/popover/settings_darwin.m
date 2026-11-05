@@ -32,6 +32,7 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
 - (void)render;
 - (void)performAction:(NSControl *)sender;
 - (void)changeLanguage:(NSPopUpButton *)sender;
+- (void)changeClaudeStale:(NSPopUpButton *)sender;
 @end
 
 @implementation RLBSettingsController
@@ -56,6 +57,8 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
         @"general": model[@"generalTitle"],
         @"sources": model[@"sourcesTitle"],
         @"language": model[@"languageLabel"],
+        @"claudeStale": model[@"claudeStaleLabel"],
+        @"staleFailureHint": model[@"staleFailureHint"],
         @"choose": model[@"changeSource"]
     };
     if ([self.model isEqualToDictionary:settings]) return;
@@ -91,6 +94,23 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
     }
     [content addSubview:language];
     y += 44;
+    [content addSubview:RLBSettingsLabel(self.model[@"claudeStale"], NSMakeRect(24, y + 4, 240, 22), labelFont)];
+    NSPopUpButton *stale = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(280, y, 256, 28) pullsDown:NO];
+    stale.target = self;
+    stale.action = @selector(changeClaudeStale:);
+    [stale setAccessibilityLabel:self.model[@"claudeStale"]];
+    for (NSDictionary *command in self.model[@"commands"]) {
+        if (![command[@"kind"] isEqualToString:@"claudeStale"]) continue;
+        [stale addItemWithTitle:command[@"title"]];
+        stale.lastItem.identifier = command[@"action"];
+        if ([command[@"checked"] boolValue]) [stale selectItem:stale.lastItem];
+    }
+    [content addSubview:stale];
+    y += 44;
+    NSTextField *hint = RLBSettingsLabel(self.model[@"staleFailureHint"], NSMakeRect(24, y, 512, 22), [NSFont systemFontOfSize:11]);
+    hint.textColor = NSColor.secondaryLabelColor;
+    [content addSubview:hint];
+    y += 28;
     for (NSDictionary *command in self.model[@"commands"]) {
         if (![command[@"kind"] isEqualToString:@"toggle"]) continue;
         NSButton *toggle = [NSButton checkboxWithTitle:command[@"title"] target:self action:@selector(performAction:)];
@@ -141,6 +161,17 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
 
 - (void)performAction:(NSControl *)sender {
     rlbPanelEvent((char *)sender.identifier.UTF8String);
+}
+
+- (void)changeClaudeStale:(NSPopUpButton *)sender {
+    NSString *action = sender.selectedItem.identifier;
+    for (NSDictionary *command in self.model[@"commands"]) {
+        if ([command[@"kind"] isEqualToString:@"claudeStale"] && [command[@"checked"] boolValue]) {
+            [sender selectItemWithTitle:command[@"title"]];
+            break;
+        }
+    }
+    rlbPanelEvent((char *)action.UTF8String);
 }
 
 - (void)changeLanguage:(NSPopUpButton *)sender {

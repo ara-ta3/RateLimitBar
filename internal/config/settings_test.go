@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"ratelimitbar/internal/config"
 	"ratelimitbar/internal/i18n"
@@ -141,5 +142,29 @@ func TestLoadingLegacyClaudePathKeepsCodexAndLanguage(t *testing.T) {
 	}
 	if got != (config.Settings{CodexPath: "/cli/codex", Language: i18n.English}) {
 		t.Fatalf("Load() = %+v", got)
+	}
+}
+
+func TestLegacySettingsKeep15MinuteClaudeThreshold(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"codexPath":"/cli/codex"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := settings.ClaudeStaleAfter.Duration(); got != 15*time.Minute {
+		t.Fatalf("threshold = %v", got)
+	}
+}
+
+func TestLoadingUnsupportedClaudeThresholdReportsError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"claudeStaleAfterMinutes":-30}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := config.Load(path); err == nil {
+		t.Fatal("expected unsupported threshold error")
 	}
 }

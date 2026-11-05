@@ -3,16 +3,19 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"ratelimitbar/internal/i18n"
 )
 
 type Settings struct {
-	Language  i18n.Language `json:"language,omitempty"`
-	CodexPath string        `json:"codexPath,omitempty"`
+	Language         i18n.Language    `json:"language,omitempty"`
+	ClaudeStaleAfter ClaudeStaleAfter `json:"claudeStaleAfterMinutes,omitempty"`
+	CodexPath        string           `json:"codexPath,omitempty"`
 }
 
 type Store struct {
@@ -81,4 +84,35 @@ func Save(path string, settings Settings) error {
 		return err
 	}
 	return os.Rename(file.Name(), path)
+}
+
+// ClaudeStaleAfter は、Claude のデータを古いと判定するまでの分数。
+type ClaudeStaleAfter int
+
+const (
+	ClaudeStaleAfter15Minutes ClaudeStaleAfter = 15
+	ClaudeStaleAfter30Minutes ClaudeStaleAfter = 30
+	ClaudeStaleAfter1Hour     ClaudeStaleAfter = 60
+	ClaudeStaleAfter3Hours    ClaudeStaleAfter = 180
+)
+
+func (s ClaudeStaleAfter) Duration() time.Duration {
+	if s == 0 {
+		s = ClaudeStaleAfter15Minutes
+	}
+	return time.Duration(s) * time.Minute
+}
+
+func (s *ClaudeStaleAfter) UnmarshalJSON(data []byte) error {
+	var minutes int
+	if err := json.Unmarshal(data, &minutes); err != nil {
+		return err
+	}
+	switch ClaudeStaleAfter(minutes) {
+	case 0, ClaudeStaleAfter15Minutes, ClaudeStaleAfter30Minutes, ClaudeStaleAfter1Hour, ClaudeStaleAfter3Hours:
+		*s = ClaudeStaleAfter(minutes)
+		return nil
+	default:
+		return fmt.Errorf("unsupported Claude stale threshold: %d minutes", minutes)
+	}
 }

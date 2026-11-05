@@ -54,7 +54,8 @@ func run() error {
 		reportSettingError(ctx, settings.Settings().Language, fmt.Errorf("%s: %w", settings.Settings().Language.Text("Could not load settings. Select your CLI sources again", "設定を読み込めませんでした。取得元を再指定してください"), err))
 	}
 	registrations := provider.DefaultRegistrations(provider.Config{
-		CodexPath: func() string { return settings.Settings().CodexPath },
+		ClaudeStaleAfter: func() time.Duration { return settings.Settings().ClaudeStaleAfter.Duration() },
+		CodexPath:        func() string { return settings.Settings().CodexPath },
 	})
 	providers := make([]provider.Provider, len(registrations))
 	sources := make([]menubar.Source, len(registrations))
@@ -67,5 +68,5 @@ func run() error {
 	}
 	return menubar.Run(ctx, sources, refreshInterval, fetch, func(err error) {
 		log.Printf("fetch failed: %v", err)
-	}, sourceActions(settings), languageSettings(settings))
+	}, append(sourceActions(settings), claudeStaleActions(settings)...), languageSettings(settings))
 }
