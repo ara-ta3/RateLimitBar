@@ -67,5 +67,5 @@ func (c claude) Fetch(ctx context.Context) (usage.Usage, error) {
 	if c.staleAfterSetting != nil {
 		staleAfter = c.staleAfterSetting()
 	}
-	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: refreshErr != nil || now.Sub(snapshot.FetchedAt) > staleAfter}, nil
+	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: now.Sub(snapshot.FetchedAt) > staleAfter}, refreshErr
 }

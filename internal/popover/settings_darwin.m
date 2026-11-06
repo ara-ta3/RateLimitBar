@@ -58,7 +58,7 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
         @"sources": model[@"sourcesTitle"],
         @"language": model[@"languageLabel"],
         @"claudeStale": model[@"claudeStaleLabel"],
-        @"staleFailureHint": model[@"staleFailureHint"],
+        @"claudeStaleHint": model[@"claudeStaleHint"],
         @"choose": model[@"changeSource"]
     };
     if ([self.model isEqualToDictionary:settings]) return;
@@ -107,7 +107,7 @@ static NSTextField *RLBSettingsLabel(NSString *text, NSRect frame, NSFont *font)
     }
     [content addSubview:stale];
     y += 44;
-    NSTextField *hint = RLBSettingsLabel(self.model[@"staleFailureHint"], NSMakeRect(24, y, 512, 22), [NSFont systemFontOfSize:11]);
+    NSTextField *hint = RLBSettingsLabel(self.model[@"claudeStaleHint"], NSMakeRect(24, y, 512, 22), [NSFont systemFontOfSize:11]);
     hint.textColor = NSColor.secondaryLabelColor;
     [content addSubview:hint];
     y += 28;

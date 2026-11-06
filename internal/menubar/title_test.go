@@ -321,3 +321,11 @@ func TestApplyRefreshCountMismatchLeavesTitleUntouched(t *testing.T) {
 		t.Errorf("title = %q, must not be updated on count mismatch", title.title)
 	}
 }
+
+func TestFormatTitleKeepsSavedUsageWhenRefreshFails(t *testing.T) {
+	selection := menubar.NewSelection([]menubar.Source{{Name: "Claude", Windows: []string{"5h"}}})
+	actual := menubar.FormatTitle([]usage.Result{{Provider: "Claude", Err: errors.New("refresh failed"), Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 42}}}}}, selection)
+	if actual != "Claude 5h 42%" {
+		t.Fatalf("title = %q", actual)
+	}
+}

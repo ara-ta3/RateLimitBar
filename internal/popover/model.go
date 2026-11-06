@@ -7,7 +7,7 @@ type Model struct {
 	SettingsTitle    string     `json:"settingsTitle"`
 	GeneralTitle     string     `json:"generalTitle"`
 	SourcesTitle     string     `json:"sourcesTitle"`
-	StaleFailureHint string     `json:"staleFailureHint"`
+	ClaudeStaleHint  string     `json:"claudeStaleHint"`
 	ClaudeStaleLabel string     `json:"claudeStaleLabel"`
 	LanguageLabel    string     `json:"languageLabel"`
 	ChangeSource     string     `json:"changeSource"`

@@ -8,6 +8,7 @@ import (
 
 type Provider interface {
 	Name() string
+	// 更新失敗時も、表示できる保存済みデータがあれば error と併せて返す。
 	Fetch(ctx context.Context) (usage.Usage, error)
 }
 

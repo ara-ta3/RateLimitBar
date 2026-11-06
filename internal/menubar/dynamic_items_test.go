@@ -155,3 +155,14 @@ func TestProviderWithEveryLabelDisabledIsHiddenOnFailureEvenWithDynamicLabels(t 
 		t.Errorf("FormatTitle() = %q, want the fixed title", got)
 	}
 }
+
+func TestDynamicItemsDeclaresSavedWindowsWhenRefreshFails(t *testing.T) {
+	adder := &fakeCheckboxAdder{}
+	items := menubar.NewDynamicItems(menubar.NewSelection(testSources()), adder)
+
+	items.Apply([]usage.Result{{Provider: "Codex", Err: errors.New("refresh failed"), Usage: usage.Usage{Windows: []usage.Window{sparkFiveHour}}}})
+
+	if !slices.Equal(adder.added, []addedCheckbox{{"Codex", "GPT-5.3-Codex-Spark 5h"}}) {
+		t.Fatalf("added = %v", adder.added)
+	}
+}
