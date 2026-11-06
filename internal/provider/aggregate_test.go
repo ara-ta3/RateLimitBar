@@ -3,6 +3,7 @@ package provider_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -133,5 +134,20 @@ func TestFetchAllFetchesProvidersConcurrently(t *testing.T) {
 
 	if _, err := provider.FetchAll(ctx, providers); err != nil {
 		t.Fatalf("providers were not fetched concurrently: %v", err)
+	}
+}
+
+func TestFetchAllPreservesSavedUsageAlongsideRefreshError(t *testing.T) {
+	refreshErr := errors.New("refresh failed")
+	saved := usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 23}}}
+	results, err := provider.FetchAll(context.Background(), []provider.Provider{
+		fakeProvider{"Claude", func(context.Context) (usage.Usage, error) { return saved, refreshErr }},
+	})
+
+	if errors.Is(err, refreshErr) != true {
+		t.Fatalf("error = %v, want refresh failure", err)
+	}
+	if !reflect.DeepEqual(results, []usage.Result{{Provider: "Claude", Usage: saved, Err: refreshErr}}) {
+		t.Fatalf("results = %+v", results)
 	}
 }

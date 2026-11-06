@@ -18,12 +18,9 @@ func NewDynamicItems(sel *Selection, adder CheckboxAdder) *DynamicItems {
 	return &DynamicItems{sel: sel, adder: adder}
 }
 
-// Apply は、成功した結果の Window のうち、まだ項目のない (provider, label) を追加する。
+// Apply は、表示できる Window のうち、まだ項目のない (provider, label) を追加する。
 func (d *DynamicItems) Apply(results []usage.Result) {
 	for _, r := range results {
-		if r.Err != nil {
-			continue
-		}
 		for _, w := range r.Usage.Windows {
 			if d.sel.declare(r.Provider, w.Label) {
 				d.adder.AddCheckbox(r.Provider, w.Label)

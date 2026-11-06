@@ -2,6 +2,7 @@ package provider_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -173,8 +174,8 @@ func TestClaudeDefaultProviderReadsStatusLineCachePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := provider.NewClaude().Fetch(context.Background())
-	if err != nil {
-		t.Fatal(err)
+	if errors.Is(err, provider.ErrExecutableUnavailable) != true {
+		t.Fatalf("error = %v, want missing CLI error alongside saved data", err)
 	}
 	if got.Stale != true {
 		t.Fatalf("Stale = %v, want true", got.Stale)

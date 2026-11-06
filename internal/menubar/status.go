@@ -17,18 +17,16 @@ func statusModel(results []usage.Result, sel *Selection, language i18n.Language)
 		}
 		entry := popover.StatusProvider{Label: result.Provider}
 		var selected []string
-		if result.Err == nil {
-			for _, window := range result.Usage.Windows {
-				if !sel.Enabled(result.Provider, window.Label) {
-					continue
-				}
-				label := windowLabel(language, window.Label)
-				entry.Windows = append(entry.Windows, popover.StatusWindow{Label: label, UsedPercent: window.UsedPercent, Stale: result.Usage.Stale})
-				selected = append(selected, fmt.Sprintf("%s %d%%", label, window.UsedPercent))
+		for _, window := range result.Usage.Windows {
+			if !sel.Enabled(result.Provider, window.Label) {
+				continue
 			}
+			label := windowLabel(language, window.Label)
+			entry.Windows = append(entry.Windows, popover.StatusWindow{Label: label, UsedPercent: window.UsedPercent, Stale: result.Usage.Stale})
+			selected = append(selected, fmt.Sprintf("%s %d%%", label, window.UsedPercent))
 		}
 		switch {
-		case result.Err != nil:
+		case result.Err != nil && len(result.Usage.Windows) == 0:
 			entry.Unavailable = true
 			model.Tooltip += "\n" + result.Provider + ": " + language.Text(failedToFetch, "取得に失敗しました")
 		case len(selected) == 0:
@@ -36,6 +34,9 @@ func statusModel(results []usage.Result, sel *Selection, language i18n.Language)
 			model.Tooltip += "\n" + result.Provider + ": " + language.Text("No usage data", "使用率のデータがありません")
 		default:
 			model.Tooltip += "\n" + result.Provider + ": " + strings.Join(selected, " / ")
+			if result.Err != nil {
+				model.Tooltip += language.Text(" (refresh failed; showing saved data)", "（更新に失敗しました・保存済みデータを表示）")
+			}
 			if result.Usage.Stale {
 				model.Tooltip += language.Text(staleSuffix, "（古いデータ）")
 			}

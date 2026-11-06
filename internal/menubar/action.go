@@ -1,8 +1,14 @@
 package menubar
 
-import "context"
+import (
+	"context"
+
+	"ratelimitbar/internal/popover"
+)
 
 type Action struct {
+	Kind    popover.CommandKind
+	Checked func() bool
 	Title   func() string
 	Label   string
 	Detail  func() string

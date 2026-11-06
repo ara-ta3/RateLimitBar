@@ -155,3 +155,17 @@ func TestFormatResultDoesNotMarkFreshUsageAsStale(t *testing.T) {
 func freshTitleState() *menubar.TitleState {
 	return menubar.NewTitleState(&fakeItem{}, menubar.NewSelection(testSources()))
 }
+
+func TestFormatResultKeepsSavedUsageAndSeparatesRefreshFailure(t *testing.T) {
+	actual := menubar.FormatResult(usage.Result{Provider: "Claude", Err: errors.New("refresh failed"), Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 42}}}})
+	if actual != "Claude: 5h 42% (refresh failed; showing saved data)" {
+		t.Fatalf("result = %q", actual)
+	}
+}
+
+func TestFormatResultShowsStaleDataAndRefreshFailureTogether(t *testing.T) {
+	actual := menubar.FormatResult(usage.Result{Provider: "Claude", Err: errors.New("refresh failed"), Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}}}})
+	if actual != "Claude: 5h 42% (stale) (refresh failed; showing saved data)" {
+		t.Fatalf("result = %q", actual)
+	}
+}

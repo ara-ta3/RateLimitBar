@@ -69,7 +69,7 @@ func TestPanelMarksStaleUsageInEnglish(t *testing.T) {
 
 	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: provider.WindowWeekly, UsedPercent: 42}}}}}, time.Time{})
 
-	expected := []popover.Provider{{Name: "Claude", Message: "Stale data: the last refresh failed or the data is over 15 minutes old. Refresh runs Claude /usage. Check CLI login, workspace trust, and the statusLine setup if this persists.", Links: []popover.Link{
+	expected := []popover.Provider{{Name: "Claude", Message: "Stale data: the data is older than the configured threshold. Select Refresh to run Claude /usage.", Links: []popover.Link{
 		{Title: "Open usage page", URL: "https://claude.ai/settings/usage"},
 		{Title: "Setup & help", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.md#connect-claude-code"},
 	}, Windows: []popover.Window{
@@ -227,7 +227,7 @@ func TestPanelExplainsStaleClaudeDataAndShowsReceivedTimeInJapanese(t *testing.T
 	}}}, received.Add(20*time.Minute))
 
 	expected := []popover.Provider{{Name: "Claude",
-		Message: "古いデータ：更新に失敗したか、15分以上受信していません。「更新」で Claude /usage を実行します。改善しない場合は CLI のログイン・信頼確認と statusLine の設定を確認してください。\n最終受信：" + received.Format("2006-01-02 15:04:05 MST"),
+		Message: "古いデータ：最終受信から設定した時間を超えています。「更新」で Claude /usage を実行します。\n最終受信：" + received.Format("2006-01-02 15:04:05 MST"),
 		Links: []popover.Link{
 			{Title: "使用量ページ", URL: "https://claude.ai/settings/usage"},
 			{Title: "連携・更新の手順", URL: "https://github.com/ara-ta3/RateLimitBar/blob/main/README.ja.md#claude-code-との連携"},
@@ -269,5 +269,50 @@ func TestPanelShowsFreshClaudeReceivedTimeWithoutRecoveryWarning(t *testing.T) {
 	expected := "Last received: " + received.Format("2006-01-02 15:04:05 MST")
 	if actual.Providers[0].Message != expected {
 		t.Fatalf("message = %q, want %q", actual.Providers[0].Message, expected)
+	}
+}
+
+func TestPanelBuildsClaudeStaleSelection(t *testing.T) {
+	panel := newUsagePanel(nil, NewSelection(nil))
+	panel.command(func(language i18n.Language) popover.Command {
+		return popover.Command{Kind: popover.ClaudeStaleCommand, Title: language.Text("1 hour", "1時間"), Checked: true}
+	}, make(chan struct{}, 1))
+	got := panel.model(i18n.Japanese, nil, time.Time{})
+	if got.ClaudeStaleLabel != "Claudeの古いデータ判定" {
+		t.Fatalf("label = %q", got.ClaudeStaleLabel)
+	}
+	if !reflect.DeepEqual(got.Commands, []popover.Command{{Kind: popover.ClaudeStaleCommand, Title: "1時間", Checked: true, Action: "0"}}) {
+		t.Fatalf("commands = %+v", got.Commands)
+	}
+}
+
+func TestPanelShowsClaudeRefreshFailureWithFreshSavedData(t *testing.T) {
+	sources := []Source{{Name: "Claude"}}
+	panel := newUsagePanel(sources, NewSelection(sources))
+	received := time.Date(2026, 11, 6, 12, 0, 0, 0, time.Local)
+	actual := panel.model(i18n.Japanese, []usage.Result{{Provider: "Claude", Err: errors.New("private refresh error"), Usage: usage.Usage{
+		ReceivedAt: received, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}},
+	}}}, received.Add(time.Minute))
+
+	if got := actual.Providers[0].Message; got != "更新に失敗しました。保存済みデータを表示しています。CLI のログイン・信頼確認と statusLine の設定を確認してから「更新」を押してください。\n最終受信："+received.Format("2006-01-02 15:04:05 MST") {
+		t.Fatalf("message = %q", got)
+	}
+	if !reflect.DeepEqual(actual.Providers[0].Windows, []popover.Window{{Label: "5h", UsedPercent: 42, Usage: "使用済み 42%", Remaining: "残り 58%", Reset: "リセット時刻は不明です", Selected: true, Tooltip: "メニューバーに表示"}}) {
+		t.Fatalf("windows = %+v", actual.Providers[0].Windows)
+	}
+}
+
+func TestPanelShowsClaudeRefreshFailureAndStaleDataTogether(t *testing.T) {
+	sources := []Source{{Name: "Claude"}}
+	panel := newUsagePanel(sources, NewSelection(sources))
+	actual := panel.model(i18n.English, []usage.Result{{Provider: "Claude", Err: errors.New("private refresh error"), Usage: usage.Usage{
+		Stale: true, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}},
+	}}}, time.Time{})
+
+	if got := actual.Providers[0].Message; got != "Stale data: the data is older than the configured threshold. Select Refresh to run Claude /usage.\nRefresh failed; showing saved data. Check CLI login, workspace trust, and the statusLine setup, then select Refresh." {
+		t.Fatalf("message = %q", got)
+	}
+	if !reflect.DeepEqual(actual.Providers[0].Windows, []popover.Window{{Label: "5h", UsedPercent: 42, Usage: "Used 42%", Remaining: "58% left", Reset: "Reset time unavailable", Selected: true, Tooltip: "Show in menu bar"}}) {
+		t.Fatalf("windows = %+v", actual.Providers[0].Windows)
 	}
 }

@@ -58,18 +58,50 @@ func Run(ctx context.Context, sources []Source, refreshInterval time.Duration, f
 		var settingsMenu *systray.MenuItem
 		if len(actions) > 0 {
 			settingsMenu = systray.AddMenuItem("", "")
-			localized.text(settingsMenu, "CLI source settings", "取得元の設定")
+			localized.text(settingsMenu, "Settings", "設定")
 		}
+
+		var claudeStaleMenu *systray.MenuItem
 		for _, action := range actions {
-			item := settingsMenu.AddSubMenuItem(action.Title(), "")
-			localized.bind(func(i18n.Language) { item.SetTitle(action.Title()) })
+			parent := settingsMenu
+			if action.Kind == popover.ClaudeStaleCommand {
+				if claudeStaleMenu == nil {
+					claudeStaleMenu = settingsMenu.AddSubMenuItem("", "")
+					localized.text(claudeStaleMenu, "Claude stale after", "Claudeの古いデータ判定")
+				}
+				parent = claudeStaleMenu
+			}
+			var item *systray.MenuItem
+			if action.Checked != nil {
+				item = parent.AddSubMenuItemCheckbox(action.Title(), "", action.Checked())
+			} else {
+				item = parent.AddSubMenuItem(action.Title(), "")
+			}
+			localized.bind(func(i18n.Language) {
+				item.SetTitle(action.Title())
+				if action.Checked != nil {
+					if action.Checked() {
+						item.Check()
+					} else {
+						item.Uncheck()
+					}
+				}
+			})
 			if localized.panel != nil {
 				localized.panel.command(func(i18n.Language) popover.Command {
 					detail := ""
 					if action.Detail != nil {
 						detail = action.Detail()
 					}
-					return popover.Command{Kind: popover.SourceCommand, Title: action.Title(), Label: action.Label, Detail: detail}
+					kind := action.Kind
+					if kind == "" {
+						kind = popover.SourceCommand
+					}
+					checked := false
+					if action.Checked != nil {
+						checked = action.Checked()
+					}
+					return popover.Command{Kind: kind, Title: action.Title(), Label: action.Label, Detail: detail, Checked: checked}
 				}, item.ClickedCh)
 			}
 			go runActionOnClick(ctx, item.ClickedCh, func(ctx context.Context) bool {

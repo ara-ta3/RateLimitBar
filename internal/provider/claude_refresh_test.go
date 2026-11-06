@@ -92,7 +92,7 @@ func TestClaudeFetchReadsCacheWrittenByRefresh(t *testing.T) {
 	}
 }
 
-func TestClaudeFetchKeepsCacheStaleWhenRefreshFails(t *testing.T) {
+func TestClaudeFetchKeepsFreshCacheAndReturnsRefreshError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "usage.json")
 	now := time.Now().UTC()
 	if err := claudeusage.Capture(strings.NewReader(`{"rate_limits":{"five_hour":{"used_percentage":12,"resets_at":4102444800}}}`), io.Discard, path, now); err != nil {
@@ -100,10 +100,10 @@ func TestClaudeFetchKeepsCacheStaleWhenRefreshFails(t *testing.T) {
 	}
 	p := claude{path: path, staleAfter: time.Minute, now: func() time.Time { return now }, refresh: func(context.Context, string) error { return context.DeadlineExceeded }}
 	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatal(err)
+	if errors.Is(err, context.DeadlineExceeded) != true {
+		t.Fatalf("error = %v, want refresh failure", err)
 	}
-	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: WindowFiveHour, UsedPercent: 12, ResetsAt: time.Unix(4102444800, 0)}}, ReceivedAt: now, Stale: true}) {
+	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: WindowFiveHour, UsedPercent: 12, ResetsAt: time.Unix(4102444800, 0)}}, ReceivedAt: now, Stale: false}) {
 		t.Fatalf("usage = %+v", got)
 	}
 }
@@ -113,5 +113,53 @@ func TestClaudeFetchReportsRefreshFailureWithoutCache(t *testing.T) {
 	_, err := p.Fetch(context.Background())
 	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestClaudeFetchUsesChangedStaleThresholdWithoutRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+	now := time.Now().UTC()
+	if err := claudeusage.Capture(strings.NewReader(`{"rate_limits":{"five_hour":{"used_percentage":12,"resets_at":4102444800}}}`), io.Discard, path, now.Add(-30*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	threshold := 15 * time.Minute
+	p := NewClaudeWithStaleAfter(func() time.Duration { return threshold }).(claude)
+	p.path = path
+	p.pathErr = nil
+	p.now = func() time.Time { return now }
+	p.refresh = func(context.Context, string) error { return nil }
+	got, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Stale != true {
+		t.Fatalf("Stale = %v, want true at 15 minute threshold", got.Stale)
+	}
+	threshold = time.Hour
+	got, err = p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Stale != false {
+		t.Fatalf("Stale = %v, want false at 1 hour threshold", got.Stale)
+	}
+}
+
+func TestClaudeFetchKeepsOldCacheAndReturnsRefreshError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+	now := time.Now().UTC()
+	received := now.Add(-2 * time.Minute)
+	if err := claudeusage.Capture(strings.NewReader(`{"rate_limits":{"five_hour":{"used_percentage":12,"resets_at":4102444800}}}`), io.Discard, path, received); err != nil {
+		t.Fatal(err)
+	}
+	p := claude{path: path, staleAfter: time.Minute, now: func() time.Time { return now }, refresh: func(context.Context, string) error { return context.DeadlineExceeded }}
+
+	got, err := p.Fetch(context.Background())
+
+	if errors.Is(err, context.DeadlineExceeded) != true {
+		t.Fatalf("error = %v, want refresh failure", err)
+	}
+	if !reflect.DeepEqual(got, usage.Usage{Windows: []usage.Window{{Label: WindowFiveHour, UsedPercent: 12, ResetsAt: time.Unix(4102444800, 0)}}, ReceivedAt: received, Stale: true}) {
+		t.Fatalf("usage = %+v", got)
 	}
 }

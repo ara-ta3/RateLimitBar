@@ -13,18 +13,23 @@ import (
 const DefaultClaudeStaleAfter = 15 * time.Minute
 
 type claude struct {
-	path       string
-	pathErr    error
-	staleAfter time.Duration
-	now        func() time.Time
-	refresh    func(context.Context, string) error
+	path              string
+	pathErr           error
+	staleAfter        time.Duration
+	staleAfterSetting func() time.Duration
+	now               func() time.Time
+	refresh           func(context.Context, string) error
 }
 
 func claudeWindowLabels() []string { return []string{WindowFiveHour, WindowWeekly} }
 
 func NewClaude() Provider {
+	return NewClaudeWithStaleAfter(nil)
+}
+
+func NewClaudeWithStaleAfter(staleAfter func() time.Duration) Provider {
 	path, err := claudeusage.CachePath()
-	return claude{path: path, pathErr: err, staleAfter: DefaultClaudeStaleAfter, now: time.Now, refresh: refreshClaude}
+	return claude{path: path, pathErr: err, staleAfter: DefaultClaudeStaleAfter, staleAfterSetting: staleAfter, now: time.Now, refresh: refreshClaude}
 }
 
 func NewClaudeFromFile(path string, staleAfter time.Duration, now func() time.Time) Provider {
@@ -58,5 +63,9 @@ func (c claude) Fetch(ctx context.Context) (usage.Usage, error) {
 	if len(windows) == 0 {
 		return usage.Usage{}, errors.Join(refreshErr, errors.New("Claude statusLine cache has no active rate limit windows; run Claude /usage with statusLine configured"))
 	}
-	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: refreshErr != nil || now.Sub(snapshot.FetchedAt) > c.staleAfter}, nil
+	staleAfter := c.staleAfter
+	if c.staleAfterSetting != nil {
+		staleAfter = c.staleAfterSetting()
+	}
+	return usage.Usage{Windows: windows, ReceivedAt: snapshot.FetchedAt, Stale: now.Sub(snapshot.FetchedAt) > staleAfter}, refreshErr
 }

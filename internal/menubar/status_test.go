@@ -171,3 +171,27 @@ func TestStatusCanSelectAModelSpecificWindow(t *testing.T) {
 		t.Fatalf("status = %#v, want %#v", actual, expected)
 	}
 }
+
+func TestStatusKeepsFreshBarsWhenRefreshFails(t *testing.T) {
+	selection := NewSelection([]Source{{Name: "Claude", Windows: []string{"5h"}}})
+	actual := statusModel([]usage.Result{{Provider: "Claude", Err: errors.New("refresh failed"), Usage: usage.Usage{Windows: []usage.Window{{Label: "5h", UsedPercent: 42}}}}}, selection, i18n.Japanese)
+
+	if !reflect.DeepEqual(actual, popover.Status{
+		Providers: []popover.StatusProvider{{Label: "Claude", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 42, Stale: false}}}},
+		Tooltip:   "RateLimitBar — 使用済みの割合\nClaude: 5h 42%（更新に失敗しました・保存済みデータを表示）",
+	}) {
+		t.Fatalf("status = %#v", actual)
+	}
+}
+
+func TestStatusShowsRefreshFailureAndStaleDataTogether(t *testing.T) {
+	selection := NewSelection([]Source{{Name: "Claude", Windows: []string{"5h"}}})
+	actual := statusModel([]usage.Result{{Provider: "Claude", Err: errors.New("refresh failed"), Usage: usage.Usage{Stale: true, Windows: []usage.Window{{Label: "5h", UsedPercent: 42}}}}}, selection, i18n.English)
+
+	if !reflect.DeepEqual(actual, popover.Status{
+		Providers: []popover.StatusProvider{{Label: "Claude", Windows: []popover.StatusWindow{{Label: "5h", UsedPercent: 42, Stale: true}}}},
+		Tooltip:   "RateLimitBar — Used percentage\nClaude: 5h 42% (refresh failed; showing saved data) (stale)",
+	}) {
+		t.Fatalf("status = %#v", actual)
+	}
+}

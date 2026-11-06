@@ -26,7 +26,7 @@ func formatResultAt(r usage.Result, now time.Time) string {
 }
 
 func formatLocalizedResultAt(r usage.Result, now time.Time, language i18n.Language) string {
-	if r.Err != nil {
+	if r.Err != nil && len(r.Usage.Windows) == 0 {
 		if errors.Is(r.Err, provider.ErrExecutableUnavailable) {
 			return r.Provider + ": " + language.Text("CLI not found (CLI source settings…)", "CLIが見つかりません（取得元の設定…）")
 		}
@@ -39,6 +39,9 @@ func formatLocalizedResultAt(r usage.Result, now time.Time, language i18n.Langua
 	text := fmt.Sprintf("%s: %s", r.Provider, strings.Join(windows, " / "))
 	if r.Usage.Stale {
 		text += language.Text(staleSuffix, "（古いデータ）")
+	}
+	if r.Err != nil {
+		text += language.Text(" (refresh failed; showing saved data)", "（更新に失敗しました・保存済みデータを表示）")
 	}
 	return text
 }
@@ -75,7 +78,7 @@ func formatTitleAt(results []usage.Result, sel *Selection, now time.Time) string
 }
 
 func formatTitlePart(r usage.Result, sel *Selection, now time.Time) string {
-	if r.Err != nil {
+	if r.Err != nil && len(r.Usage.Windows) == 0 {
 		if !sel.anyEnabled(r.Provider) {
 			return ""
 		}

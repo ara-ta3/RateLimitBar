@@ -13,11 +13,11 @@ type Window struct {
 type Usage struct {
 	Windows    []Window
 	ReceivedAt time.Time
-	// Stale は、元データが古く現在の使用率と異なる可能性があることを表す。
+	// Stale は、最終受信から設定時間を超えていることを表す。
 	Stale bool
 }
 
-// Result は Provider ごとの取得結果で、成功した Usage か Err のどちらかを持つ。
+// Result は Provider ごとの取得結果。更新失敗時も保存済みの Usage と Err を併せて保持できる。
 type Result struct {
 	Provider string
 	Usage    Usage
